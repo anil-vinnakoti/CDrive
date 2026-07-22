@@ -6,6 +6,9 @@ on:
   pull_request:
     branches: [ main, develop ]
 
+env:
+  SAM_CLI_TELEMETRY: 0
+
 jobs:
   test-and-validate:
     name: Run Unit Tests & Validate Infrastructure
@@ -32,7 +35,7 @@ jobs:
         uses: aws-actions/setup-sam@v2
 
       - name: Validate SAM Template
-        run: sam validate --template template.yaml
+        run: sam validate --template template.yaml --region ap-south-1
 
       - name: SAM Build
         run: sam build

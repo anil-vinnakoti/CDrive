@@ -11,10 +11,10 @@ import (
 )
 
 type FolderHandler struct {
-	repo *repository.DynamoRepository
+	repo repository.Repository
 }
 
-func NewFolderHandler(repo *repository.DynamoRepository) *FolderHandler {
+func NewFolderHandler(repo repository.Repository) *FolderHandler {
 	return &FolderHandler{
 		repo: repo,
 	}

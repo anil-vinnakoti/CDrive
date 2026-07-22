@@ -12,6 +12,12 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 )
 
+// Repository defines data access methods for single-table operations
+type Repository interface {
+	PutItem(ctx context.Context, item models.DriveItem) error
+	GetItemsByFolderID(ctx context.Context, folderID string) ([]models.DriveItem, error)
+}
+
 type DynamoRepository struct {
 	client    *dynamodb.Client
 	tableName string

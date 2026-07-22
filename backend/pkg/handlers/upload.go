@@ -15,11 +15,11 @@ import (
 )
 
 type UploadHandler struct {
-	repo    *repository.DynamoRepository
-	storage *storage.S3Storage
+	repo    repository.Repository
+	storage storage.Storage
 }
 
-func NewUploadHandler(repo *repository.DynamoRepository, storage *storage.S3Storage) *UploadHandler {
+func NewUploadHandler(repo repository.Repository, storage storage.Storage) *UploadHandler {
 	return &UploadHandler{
 		repo:    repo,
 		storage: storage,

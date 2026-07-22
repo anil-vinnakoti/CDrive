@@ -9,6 +9,11 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 )
 
+// Storage defines storage operation methods
+type Storage interface {
+	GeneratePresignedPutURL(ctx context.Context, key string, contentType string) (string, error)
+}
+
 type S3Storage struct {
 	client        *s3.Client
 	presignClient *s3.PresignClient

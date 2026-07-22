@@ -1,0 +1,156 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: 'CDrive Backend Infrastructure Multi-environment (dev / prod) AWS SAM
+  Template provisioning DynamoDB, S3 Bucket, HTTP API Gateway, and Go Lambda Function.
+
+  '
+Parameters:
+  Stage:
+    Type: String
+    Default: dev
+    AllowedValues:
+    - dev
+    - prod
+    Description: Environment stage name (dev or prod)
+Globals:
+  Function:
+    Timeout: 15
+    MemorySize: 256
+    Architectures:
+    - arm64
+    Environment:
+      Variables:
+        STAGE:
+          Ref: Stage
+        TABLE_NAME:
+          Ref: CustomDriveData
+        BUCKET_NAME:
+          Ref: CDriveFileStorage
+        GSI_FOLDER_INDEX: FolderIdIndex
+Resources:
+  CustomDriveData:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName:
+        Fn::Sub: CustomDriveData-${Stage}
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+      - AttributeName: PK
+        AttributeType: S
+      - AttributeName: SK
+        AttributeType: S
+      - AttributeName: FolderID
+        AttributeType: S
+      KeySchema:
+      - AttributeName: PK
+        KeyType: HASH
+      - AttributeName: SK
+        KeyType: RANGE
+      GlobalSecondaryIndexes:
+      - IndexName: FolderIdIndex
+        KeySchema:
+        - AttributeName: FolderID
+          KeyType: HASH
+        - AttributeName: SK
+          KeyType: RANGE
+        Projection:
+          ProjectionType: ALL
+  CDriveFileStorage:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName:
+        Fn::Sub: cdrive-file-storage-${Stage}-${AWS::AccountId}
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      CorsConfiguration:
+        CorsRules:
+        - AllowedHeaders:
+          - '*'
+          AllowedMethods:
+          - GET
+          - PUT
+          - POST
+          - DELETE
+          - HEAD
+          AllowedOrigins:
+          - '*'
+          MaxAge: 3000
+  HttpApi:
+    Type: AWS::Serverless::HttpApi
+    Properties:
+      Name:
+        Fn::Sub: CDriveHttpApi-${Stage}
+      CorsConfiguration:
+        AllowHeaders:
+        - Content-Type
+        - Authorization
+        - X-Amz-Date
+        - X-Api-Key
+        - X-Amz-Security-Token
+        AllowMethods:
+        - GET
+        - POST
+        - PUT
+        - DELETE
+        - OPTIONS
+        AllowOrigins:
+        - '*'
+  CDriveApiFunction:
+    Type: AWS::Serverless::Function
+    Metadata:
+      BuildMethod: makefile
+      SamResourceId: CDriveApiFunction
+    Properties:
+      CodeUri: CDriveApiFunction
+      Handler: bootstrap
+      Runtime: provided.al2023
+      Description:
+        Fn::Sub: Go Lambda handler for CDrive API (${Stage})
+      Policies:
+      - DynamoDBCrudPolicy:
+          TableName:
+            Ref: CustomDriveData
+      - S3CrudPolicy:
+          BucketName:
+            Ref: CDriveFileStorage
+      Events:
+        RootApiRoute:
+          Type: HttpApi
+          Properties:
+            ApiId:
+              Ref: HttpApi
+            Path: /
+            Method: ANY
+        ProxyApiRoute:
+          Type: HttpApi
+          Properties:
+            ApiId:
+              Ref: HttpApi
+            Path: /{proxy+}
+            Method: ANY
+Outputs:
+  EnvironmentStage:
+    Description: Active Environment Stage
+    Value:
+      Ref: Stage
+  HttpApiEndpoint:
+    Description: HTTP API Gateway Endpoint URL
+    Value:
+      Fn::Sub: https://${HttpApi}.execute-api.${AWS::Region}.amazonaws.com
+  DynamoDBTableName:
+    Description: DynamoDB Table Name
+    Value:
+      Ref: CustomDriveData
+  S3BucketName:
+    Description: S3 Storage Bucket Name
+    Value:
+      Ref: CDriveFileStorage
+  CDriveFunctionArn:
+    Description: CDrive API Lambda Function ARN
+    Value:
+      Fn::GetAtt:
+      - CDriveApiFunction
+      - Arn

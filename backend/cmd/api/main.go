@@ -1,0 +1,135 @@
+package main
+
+import (
+	"context"
+	"log/slog"
+	"net/http"
+	"os"
+	"strings"
+
+	"cdrive-backend/pkg/handlers"
+	"cdrive-backend/pkg/repository"
+	"cdrive-backend/pkg/storage"
+
+	"github.com/aws/aws-lambda-go/events"
+	"github.com/aws/aws-lambda-go/lambda"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
+)
+
+var (
+	uploadHandler *handlers.UploadHandler
+	folderHandler *handlers.FolderHandler
+	logger        *slog.Logger
+)
+
+func init() {
+	logger = slog.New(slog.NewJSONHandler(os.Stdout, nil))
+
+	tableName := os.Getenv("TABLE_NAME")
+	if tableName == "" {
+		tableName = os.Getenv("DYNAMODB_TABLE_NAME")
+	}
+	if tableName == "" {
+		tableName = "CustomDriveData"
+	}
+
+	bucketName := os.Getenv("BUCKET_NAME")
+	if bucketName == "" {
+		bucketName = os.Getenv("S3_BUCKET_NAME")
+	}
+	if bucketName == "" {
+		bucketName = "cdrive-file-storage"
+	}
+
+	gsiName := os.Getenv("GSI_FOLDER_INDEX")
+	if gsiName == "" {
+		gsiName = "FolderIdIndex"
+	}
+
+	cfg, err := config.LoadDefaultConfig(context.Background())
+	if err != nil {
+		logger.Error("unable to load AWS SDK config", "error", err)
+		os.Exit(1)
+	}
+
+	if cfg.Region == "" {
+		cfg.Region = "ap-south-1"
+	}
+
+	logger.Info("initialized backend config", "region", cfg.Region, "tableName", tableName, "bucketName", bucketName)
+
+	// Support custom DynamoDB local endpoint if configured or running in SAM Local
+	dynamoEndpoint := os.Getenv("AWS_ENDPOINT_URL_DYNAMODB")
+	if dynamoEndpoint == "" {
+		dynamoEndpoint = os.Getenv("DYNAMODB_ENDPOINT")
+	}
+	if dynamoEndpoint == "" {
+		dynamoEndpoint = os.Getenv("AWS_ENDPOINT_URL")
+	}
+	if dynamoEndpoint == "" && os.Getenv("AWS_SAM_LOCAL") == "true" {
+		dynamoEndpoint = "http://host.docker.internal:8000"
+	}
+
+	var dynamoClient *dynamodb.Client
+	if dynamoEndpoint != "" {
+		logger.Info("using custom DynamoDB endpoint", "endpoint", dynamoEndpoint)
+		dynamoClient = dynamodb.NewFromConfig(cfg, func(o *dynamodb.Options) {
+			o.BaseEndpoint = aws.String(dynamoEndpoint)
+		})
+	} else {
+		dynamoClient = dynamodb.NewFromConfig(cfg)
+	}
+
+	s3Client := s3.NewFromConfig(cfg)
+
+	repo := repository.NewDynamoRepository(dynamoClient, tableName, gsiName)
+	store := storage.NewS3Storage(s3Client, bucketName)
+
+	uploadHandler = handlers.NewUploadHandler(repo, store)
+	folderHandler = handlers.NewFolderHandler(repo)
+}
+
+func router(ctx context.Context, request events.APIGatewayV2HTTPRequest) (events.APIGatewayV2HTTPResponse, error) {
+	method := request.RequestContext.HTTP.Method
+	rawPath := request.RawPath
+
+	// Normalize path by stripping /api/v1 or /api prefixes if present
+	normalizedPath := rawPath
+	normalizedPath = strings.TrimPrefix(normalizedPath, "/api/v1")
+	normalizedPath = strings.TrimPrefix(normalizedPath, "/api")
+
+	logger.Info("incoming request", "rawPath", rawPath, "normalizedPath", normalizedPath, "method", method)
+
+	switch {
+	case method == "POST" && (normalizedPath == "/files/upload-url" || normalizedPath == "/files/upload" || normalizedPath == "/upload"):
+		return uploadHandler.HandleUploadProcess(ctx, request)
+
+	case method == "GET" && (normalizedPath == "/folders/contents" || normalizedPath == "/folders" || normalizedPath == "/files"):
+		return folderHandler.ListFolderContents(ctx, request)
+
+	case method == "GET" && normalizedPath == "/health":
+		return events.APIGatewayV2HTTPResponse{
+			StatusCode: http.StatusOK,
+			Body:       `{"status":"ok","message":"CDrive API is operational"}`,
+			Headers: map[string]string{
+				"Content-Type": "application/json",
+			},
+		}, nil
+
+	default:
+		return events.APIGatewayV2HTTPResponse{
+			StatusCode: http.StatusNotFound,
+			Body:       `{"error":"Route not found","path":` + rawPath + `}`,
+			Headers: map[string]string{
+				"Content-Type": "application/json",
+			},
+		}, nil
+	}
+}
+
+func main() {
+	lambda.Start(router)
+}

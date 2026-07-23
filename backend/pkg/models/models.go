@@ -17,6 +17,7 @@ type DriveItem struct {
 	IsFavorite bool      `dynamodbav:"IsFavorite" json:"isFavorite"`
 	IsTrashed  bool      `dynamodbav:"IsTrashed" json:"isTrashed"`
 	TrashedAt *time.Time `dynamodbav:"TrashedAt,omitempty" json:"trashedAt,omitempty"`
+	TTL       *int64     `dynamodbav:"TTL,omitempty" json:"ttl,omitempty"`
 	CreatedAt time.Time  `dynamodbav:"CreatedAt" json:"createdAt"`
 	UpdatedAt time.Time  `dynamodbav:"UpdatedAt" json:"updatedAt"`
 }

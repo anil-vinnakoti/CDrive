@@ -37,6 +37,7 @@ export default function DrivePage() {
   const [showPreviewModal, setShowPreviewModal] = useState<boolean>(false);
   const [showShareModal, setShowShareModal] = useState<boolean>(false);
   const [showDeleteModal, setShowDeleteModal] = useState<boolean>(false);
+  const [showEmptyTrashModal, setShowEmptyTrashModal] = useState<boolean>(false);
 
   const [newFolderName, setNewFolderName] = useState<string>('');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -306,10 +307,25 @@ export default function DrivePage() {
       await api.deleteItem(pendingDeleteItem.id, pendingDeleteItem.type);
       setShowDeleteModal(false);
       setPendingDeleteItem(null);
-      showToast(`Deleted "${pendingDeleteItem.name}"`, 'success');
+      showToast(`Permanently deleted "${pendingDeleteItem.name}"`, 'success');
       loadItems(currentFolderId);
     } catch (err: any) {
       showToast(`Deletion failed: ${err.message}`, 'error');
+    }
+  };
+
+  // Empty Trash Action
+  const handleEmptyTrash = async () => {
+    try {
+      const trashedItems = items.filter(i => i.isTrashed);
+      for (const item of trashedItems) {
+        await api.deleteItem(item.id, item.type);
+      }
+      setShowEmptyTrashModal(false);
+      showToast(`Permanently deleted ${trashedItems.length} item(s) from Trash`, 'success');
+      loadItems('ALL');
+    } catch (err: any) {
+      showToast(`Empty trash failed: ${err.message}`, 'error');
     }
   };
 
@@ -524,6 +540,16 @@ export default function DrivePage() {
           </nav>
 
           <div className="flex items-center gap-2">
+            {activeTab === 'trash' && filteredItems.length > 0 && (
+              <button
+                onClick={() => setShowEmptyTrashModal(true)}
+                title="Permanently delete all items currently in Trash"
+                className="px-3 py-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 text-rose-600 dark:text-rose-400 font-medium text-xs flex items-center gap-1.5 transition-colors cursor-pointer mr-1"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>Empty Trash</span>
+              </button>
+            )}
             <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-1 rounded-lg flex gap-1">
               <button onClick={() => setViewMode('grid')} title="Switch to Grid View" className={`p-1.5 rounded transition-colors cursor-pointer ${viewMode === 'grid' ? 'bg-zinc-200 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100' : 'text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200'}`}>
                 <LayoutGrid className="w-4 h-4" />
@@ -595,7 +621,10 @@ export default function DrivePage() {
                             <Star className={`w-4 h-4 ${item.isFavorite ? 'fill-zinc-900 dark:fill-zinc-100' : ''}`} />
                           </button>
                           {activeTab === 'trash' ? (
-                            <button onClick={(e) => handleToggleTrash(item, false, e)} title="Restore from Trash" className="p-1.5 text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200 opacity-0 group-hover:opacity-100 cursor-pointer"><RefreshCw className="w-4 h-4" /></button>
+                            <>
+                              <button onClick={(e) => handleToggleTrash(item, false, e)} title="Restore from Trash" className="p-1.5 text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200 opacity-0 group-hover:opacity-100 cursor-pointer"><RefreshCw className="w-4 h-4" /></button>
+                              <button onClick={(e) => { e.stopPropagation(); setPendingDeleteItem(item); setShowDeleteModal(true); }} title="Delete Permanently" className="p-1.5 text-rose-500 hover:text-rose-600 opacity-0 group-hover:opacity-100 cursor-pointer"><Trash2 className="w-4 h-4" /></button>
+                            </>
                           ) : (
                             <button onClick={(e) => handleToggleTrash(item, true, e)} title="Move to Trash" className="p-1.5 text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200 opacity-0 group-hover:opacity-100 cursor-pointer"><Trash2 className="w-4 h-4" /></button>
                           )}
@@ -616,7 +645,10 @@ export default function DrivePage() {
                               <Star className={`w-4 h-4 ${item.isFavorite ? 'fill-zinc-900 dark:fill-zinc-100' : ''}`} />
                             </button>
                             {activeTab === 'trash' ? (
-                              <button onClick={(e) => handleToggleTrash(item, false, e)} title="Restore from Trash" className="p-1.5 text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200 opacity-0 group-hover:opacity-100 cursor-pointer"><RefreshCw className="w-4 h-4" /></button>
+                              <>
+                                <button onClick={(e) => handleToggleTrash(item, false, e)} title="Restore from Trash" className="p-1.5 text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200 opacity-0 group-hover:opacity-100 cursor-pointer"><RefreshCw className="w-4 h-4" /></button>
+                                <button onClick={(e) => { e.stopPropagation(); setPendingDeleteItem(item); setShowDeleteModal(true); }} title="Delete Permanently" className="p-1.5 text-rose-500 hover:text-rose-600 opacity-0 group-hover:opacity-100 cursor-pointer"><Trash2 className="w-4 h-4" /></button>
+                              </>
                             ) : (
                               <button onClick={(e) => handleToggleTrash(item, true, e)} title="Move to Trash" className="p-1.5 text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200 opacity-0 group-hover:opacity-100 cursor-pointer"><Trash2 className="w-4 h-4" /></button>
                             )}
@@ -984,16 +1016,39 @@ export default function DrivePage() {
           <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 w-full max-w-md p-6 rounded-2xl flex flex-col gap-5">
             <div className="flex items-center justify-between border-b border-zinc-200 dark:border-zinc-800 pb-4">
               <h3 className="font-medium text-sm text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
-                <AlertTriangle className="w-4 h-4 text-zinc-500 dark:text-zinc-400" /> Confirm Deletion
+                <AlertTriangle className="w-4 h-4 text-zinc-500 dark:text-zinc-400" /> Confirm Permanent Deletion
               </h3>
               <button onClick={() => setShowDeleteModal(false)} title="Close modal" className="text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 cursor-pointer">
                 <X className="w-4 h-4" />
               </button>
             </div>
-            <p className="text-xs text-zinc-600 dark:text-zinc-300">Are you sure you want to delete <strong className="text-zinc-900 dark:text-zinc-100">"{pendingDeleteItem.name}"</strong>?</p>
+            <p className="text-xs text-zinc-600 dark:text-zinc-300">Are you sure you want to permanently delete <strong className="text-zinc-900 dark:text-zinc-100">"{pendingDeleteItem.name}"</strong>? This will erase the file from cloud storage and cannot be undone.</p>
             <div className="flex justify-end gap-3 pt-2 border-t border-zinc-200 dark:border-zinc-800">
               <button onClick={() => setShowDeleteModal(false)} title="Cancel deletion" className="py-2 px-4 text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200 text-xs font-medium cursor-pointer">Cancel</button>
               <button onClick={handleConfirmDelete} title="Permanently delete item" className="py-2 px-4 rounded-lg bg-zinc-900 dark:bg-zinc-100 hover:bg-zinc-800 dark:hover:bg-zinc-200 text-zinc-100 dark:text-zinc-950 font-medium text-xs transition-colors cursor-pointer">Delete Item</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Confirm Empty Trash Modal */}
+      {showEmptyTrashModal && (
+        <div className="fixed inset-0 bg-zinc-950/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 w-full max-w-md p-6 rounded-2xl flex flex-col gap-5">
+            <div className="flex items-center justify-between border-b border-zinc-200 dark:border-zinc-800 pb-4">
+              <h3 className="font-medium text-sm text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4 text-rose-500" /> Empty Trash?
+              </h3>
+              <button onClick={() => setShowEmptyTrashModal(false)} title="Close modal" className="text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 cursor-pointer">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <p className="text-xs text-zinc-600 dark:text-zinc-300">
+              Are you sure you want to permanently delete all items in Trash? This will remove files from cloud storage and <strong>cannot be undone</strong>.
+            </p>
+            <div className="flex justify-end gap-3 pt-2 border-t border-zinc-200 dark:border-zinc-800">
+              <button onClick={() => setShowEmptyTrashModal(false)} title="Cancel action" className="py-2 px-4 text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200 text-xs font-medium cursor-pointer">Cancel</button>
+              <button onClick={handleEmptyTrash} title="Confirm empty trash" className="py-2 px-4 rounded-lg bg-rose-600 hover:bg-rose-700 text-white font-medium text-xs transition-colors cursor-pointer">Empty Trash</button>
             </div>
           </div>
         </div>

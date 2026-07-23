@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"cdrive-backend/pkg/models"
 
@@ -159,18 +160,35 @@ func (r *DynamoRepository) UpdateFavoriteStatus(ctx context.Context, pk string, 
 	return nil
 }
 
-// UpdateTrashStatus updates the IsTrashed attribute of a DriveItem
+// UpdateTrashStatus updates the IsTrashed attribute of a DriveItem, setting a 25-day TTL when trashed
 func (r *DynamoRepository) UpdateTrashStatus(ctx context.Context, pk string, sk string, isTrashed bool) error {
+	var updateExpression string
+	var exprValues map[string]types.AttributeValue
+
+	if isTrashed {
+		now := time.Now()
+		ttlSeconds := now.Add(25 * 24 * time.Hour).Unix()
+		updateExpression = "SET IsTrashed = :trashed, TrashedAt = :trashedAt, TTL = :ttl"
+		exprValues = map[string]types.AttributeValue{
+			":trashed":   &types.AttributeValueMemberBOOL{Value: true},
+			":trashedAt": &types.AttributeValueMemberS{Value: now.Format(time.RFC3339)},
+			":ttl":       &types.AttributeValueMemberN{Value: fmt.Sprintf("%d", ttlSeconds)},
+		}
+	} else {
+		updateExpression = "SET IsTrashed = :trashed REMOVE TrashedAt, TTL"
+		exprValues = map[string]types.AttributeValue{
+			":trashed": &types.AttributeValueMemberBOOL{Value: false},
+		}
+	}
+
 	_, err := r.client.UpdateItem(ctx, &dynamodb.UpdateItemInput{
 		TableName: aws.String(r.tableName),
 		Key: map[string]types.AttributeValue{
 			"PK": &types.AttributeValueMemberS{Value: pk},
 			"SK": &types.AttributeValueMemberS{Value: sk},
 		},
-		UpdateExpression: aws.String("SET IsTrashed = :trashed"),
-		ExpressionAttributeValues: map[string]types.AttributeValue{
-			":trashed": &types.AttributeValueMemberBOOL{Value: isTrashed},
-		},
+		UpdateExpression:          aws.String(updateExpression),
+		ExpressionAttributeValues: exprValues,
 	})
 	if err != nil {
 		return fmt.Errorf("failed to update trash status: %w", err)

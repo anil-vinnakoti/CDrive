@@ -47,6 +47,7 @@ jobs:
             --parameter-overrides Stage=dev \
             --no-confirm-changeset \
             --no-fail-on-empty-changeset \
+            --resolve-s3 \
             --region ap-south-1
 
       - name: Output AWS Dev API URL

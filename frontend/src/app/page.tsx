@@ -1,15 +1,25 @@
 'use client';
 
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useRouter } from 'next/navigation';
+import dynamic from 'next/dynamic';
 import {
   HardDrive, Plus, FolderPlus, Clock, Star, Trash2, Cloud, Search, X,
-  Moon, Sun, Key, LayoutGrid, List, RefreshCw, FolderOpen, UploadCloud,
-  FileText, Image as ImageIcon, Music, Video, Code2, File, ChevronRight,
-  Download, FileUp, Loader, CheckCircle2, AlertCircle, Info, AlertTriangle, FileType2, LogOut
+  Moon, Sun, Key, LayoutGrid, List, RefreshCw, FolderOpen, ChevronRight,
+  Loader, CheckCircle2, AlertCircle, Info, LogOut
 } from 'lucide-react';
 
 import { api, DriveItem, UserResponse } from '@/lib/api';
+import { useDebounce } from '@/hooks/useDebounce';
+import { DriveItemCard } from '@/components/DriveItemCard';
+
+// Code Splitting with dynamic imports for modals (loaded lazily on demand)
+const FolderModal = dynamic(() => import('@/components/modals/FolderModal').then(m => m.FolderModal), { ssr: false });
+const UploadModal = dynamic(() => import('@/components/modals/UploadModal').then(m => m.UploadModal), { ssr: false });
+const PreviewModal = dynamic(() => import('@/components/modals/PreviewModal').then(m => m.PreviewModal), { ssr: false });
+const ShareModal = dynamic(() => import('@/components/modals/ShareModal').then(m => m.ShareModal), { ssr: false });
+const ConfirmDeleteModal = dynamic(() => import('@/components/modals/ConfirmDeleteModal').then(m => m.ConfirmDeleteModal), { ssr: false });
+const EmptyTrashModal = dynamic(() => import('@/components/modals/ConfirmDeleteModal').then(m => m.EmptyTrashModal), { ssr: false });
 
 export default function DrivePage() {
   const router = useRouter();
@@ -28,6 +38,8 @@ export default function DrivePage() {
   const [loading, setLoading] = useState<boolean>(true);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [searchQuery, setSearchQuery] = useState<string>('');
+  const debouncedSearchQuery = useDebounce(searchQuery, 200);
+
   const [theme, setTheme] = useState<'dark' | 'light'>('dark');
 
   // Modals & Forms State
@@ -61,15 +73,14 @@ export default function DrivePage() {
 
   // Toast Notifications
   const [toasts, setToasts] = useState<Array<{ id: string; message: string; type: 'info' | 'success' | 'error' }>>([]);
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const showToast = (message: string, type: 'info' | 'success' | 'error' = 'info') => {
+  const showToast = useCallback((message: string, type: 'info' | 'success' | 'error' = 'info') => {
     const id = Math.random().toString(36).substring(2, 9);
     setToasts(prev => [...prev, { id, message, type }]);
     setTimeout(() => {
       setToasts(prev => prev.filter(t => t.id !== id));
     }, 4000);
-  };
+  }, []);
 
   // Sync API Client Configuration
   useEffect(() => {
@@ -89,7 +100,7 @@ export default function DrivePage() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [showToast]);
 
   // Pre-load Thumbnail Previews for Images & PDFs
   useEffect(() => {
@@ -178,11 +189,11 @@ export default function DrivePage() {
   };
 
   // Folder Open & Breadcrumbs
-  const openFolder = (folder: DriveItem) => {
+  const openFolder = useCallback((folder: DriveItem) => {
     setCurrentFolderId(folder.id);
     setBreadcrumbs(prev => [...prev, { id: folder.id, name: folder.name }]);
     loadItems(folder.id);
-  };
+  }, [loadItems]);
 
   const navigateBreadcrumb = (index: number) => {
     const nextBreadcrumbs = breadcrumbs.slice(0, index + 1);
@@ -244,7 +255,7 @@ export default function DrivePage() {
   };
 
   // Open Preview Modal
-  const openPreview = async (item: DriveItem) => {
+  const openPreview = useCallback(async (item: DriveItem) => {
     setPreviewItem(item);
     setShowPreviewModal(true);
     setDownloadUrl('');
@@ -255,7 +266,7 @@ export default function DrivePage() {
     } catch (err: any) {
       showToast(`Failed to load file preview: ${err.message}`, 'error');
     }
-  };
+  }, [showToast]);
 
   // Download Trigger
   const handleDownloadClick = () => {
@@ -276,7 +287,7 @@ export default function DrivePage() {
   };
 
   // Toggle Favorite Status
-  const handleToggleFavorite = async (item: DriveItem, e: React.MouseEvent) => {
+  const handleToggleFavorite = useCallback(async (item: DriveItem, e: React.MouseEvent) => {
     e.stopPropagation();
     try {
       const nextFav = !item.isFavorite;
@@ -286,10 +297,10 @@ export default function DrivePage() {
     } catch (err: any) {
       showToast(`Favorite update failed: ${err.message}`, 'error');
     }
-  };
+  }, [currentFolderId, loadItems, showToast]);
 
   // Toggle Trash Status
-  const handleToggleTrash = async (item: DriveItem, isTrashAction: boolean, e: React.MouseEvent) => {
+  const handleToggleTrash = useCallback(async (item: DriveItem, isTrashAction: boolean, e: React.MouseEvent) => {
     e.stopPropagation();
     try {
       await api.toggleTrash(item.id, item.type, isTrashAction);
@@ -298,7 +309,13 @@ export default function DrivePage() {
     } catch (err: any) {
       showToast(`Trash update failed: ${err.message}`, 'error');
     }
-  };
+  }, [currentFolderId, loadItems, showToast]);
+
+  const handlePermanentDeleteClick = useCallback((item: DriveItem, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setPendingDeleteItem(item);
+    setShowDeleteModal(true);
+  }, []);
 
   // Permanent Delete Confirm
   const handleConfirmDelete = async () => {
@@ -330,50 +347,43 @@ export default function DrivePage() {
   };
 
   // Format Helpers
-  const formatFileSize = (bytes?: number) => {
+  const formatFileSize = useCallback((bytes?: number) => {
     if (!bytes || bytes === 0) return '0 B';
     const k = 1024;
     const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
     return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
-  };
+  }, []);
 
-  const getFileIcon = (item: DriveItem) => {
-    if (item.type === 'FOLDER') return <FolderOpen className="w-6 h-6 text-zinc-800 dark:text-zinc-100" />;
-    const mime = (item.mimeType || '').toLowerCase();
-    const ext = (item.name || '').split('.').pop()?.toLowerCase();
+  // Filter Items by Search Query and Active Tab (Memoized)
+  const filteredItems = useMemo(() => {
+    const query = debouncedSearchQuery.toLowerCase();
+    return items.filter(item => {
+      const matchesSearch = item.name.toLowerCase().includes(query);
+      if (!matchesSearch) return false;
 
-    if (mime.includes('pdf') || ext === 'pdf') return <FileText className="w-6 h-6 text-zinc-700 dark:text-zinc-300" />;
-    if (mime.includes('image') || ['jpg', 'jpeg', 'png', 'gif', 'svg'].includes(ext || '')) return <ImageIcon className="w-6 h-6 text-zinc-700 dark:text-zinc-300" />;
-    if (mime.includes('word') || ['doc', 'docx', 'txt'].includes(ext || '')) return <FileType2 className="w-6 h-6 text-zinc-700 dark:text-zinc-300" />;
-    if (mime.includes('code') || ['js', 'ts', 'go', 'py', 'json', 'html', 'css'].includes(ext || '')) return <Code2 className="w-6 h-6 text-zinc-700 dark:text-zinc-300" />;
-    if (mime.includes('audio') || ['mp3', 'wav'].includes(ext || '')) return <Music className="w-6 h-6 text-zinc-700 dark:text-zinc-300" />;
-    if (mime.includes('video') || ['mp4', 'webm'].includes(ext || '')) return <Video className="w-6 h-6 text-zinc-700 dark:text-zinc-300" />;
+      if (activeTab === 'favorites') {
+        return !item.isTrashed && item.isFavorite;
+      }
+      if (activeTab === 'trash') {
+        return item.isTrashed;
+      }
+      if (activeTab === 'recent') {
+        return !item.isTrashed;
+      }
 
-    return <File className="w-6 h-6 text-zinc-500 dark:text-zinc-400" />;
-  };
+      if (item.isTrashed) return false;
+      return true;
+    });
+  }, [items, debouncedSearchQuery, activeTab]);
 
-  // Filter Items by Search Query and Active Tab
-  const filteredItems = items.filter(item => {
-    const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase());
-    if (!matchesSearch) return false;
+  const totalUsedSize = useMemo(() => {
+    return items.filter(i => i.type === 'FILE').reduce((acc, i) => acc + (i.size || 0), 0);
+  }, [items]);
 
-    if (activeTab === 'favorites') {
-      return !item.isTrashed && item.isFavorite;
-    }
-    if (activeTab === 'trash') {
-      return item.isTrashed;
-    }
-    if (activeTab === 'recent') {
-      return !item.isTrashed;
-    }
-
-    if (item.isTrashed) return false;
-    return true;
-  });
-
-  const totalUsedSize = items.filter(i => i.type === 'FILE').reduce((acc, i) => acc + (i.size || 0), 0);
-  const storagePct = Math.min(100, Math.max(5, (totalUsedSize / (50 * 1024 * 1024 * 1024)) * 100));
+  const storagePct = useMemo(() => {
+    return Math.min(100, Math.max(5, (totalUsedSize / (50 * 1024 * 1024 * 1024)) * 100));
+  }, [totalUsedSize]);
 
   if (authChecking) {
     return (
@@ -593,466 +603,78 @@ export default function DrivePage() {
             </div>
           ) : (
             <div className={viewMode === 'grid' ? 'grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4' : 'flex flex-col gap-2'}>
-              {filteredItems.map((item) => {
-                const mime = (item.mimeType || '').toLowerCase();
-                const ext = (item.name || '').split('.').pop()?.toLowerCase() || '';
-                const thumbUrl = thumbnails[item.id];
-                const isImage = mime.includes('image') || ['jpg', 'jpeg', 'png', 'gif', 'svg', 'webp'].includes(ext);
-                const isPdf = mime.includes('pdf') || ext === 'pdf';
-
-                return (
-                  <div
-                    key={item.id}
-                    onClick={() => item.type === 'FOLDER' ? openFolder(item) : openPreview(item)}
-                    className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-4 rounded-xl flex flex-col gap-3 group hover:border-zinc-400 dark:hover:border-zinc-700 transition-colors cursor-pointer relative"
-                  >
-                    {/* Visual Card Header */}
-                    {item.type === 'FOLDER' ? (
-                      <div className="flex items-center justify-between">
-                        <div className="p-2.5 rounded-lg bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700/60 flex items-center justify-center">
-                          <FolderOpen className="w-5 h-5 text-zinc-800 dark:text-zinc-100" />
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <button
-                            onClick={(e) => handleToggleFavorite(item, e)}
-                            title={item.isFavorite ? "Remove from Favorites" : "Add to Favorites"}
-                            className={`p-1.5 rounded-lg transition-colors cursor-pointer ${item.isFavorite ? 'text-zinc-900 dark:text-zinc-100 opacity-100' : 'text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200 opacity-0 group-hover:opacity-100'}`}
-                          >
-                            <Star className={`w-4 h-4 ${item.isFavorite ? 'fill-zinc-900 dark:fill-zinc-100' : ''}`} />
-                          </button>
-                          {activeTab === 'trash' ? (
-                            <>
-                              <button onClick={(e) => handleToggleTrash(item, false, e)} title="Restore from Trash" className="p-1.5 text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200 opacity-0 group-hover:opacity-100 cursor-pointer"><RefreshCw className="w-4 h-4" /></button>
-                              <button onClick={(e) => { e.stopPropagation(); setPendingDeleteItem(item); setShowDeleteModal(true); }} title="Delete Permanently" className="p-1.5 text-rose-500 hover:text-rose-600 opacity-0 group-hover:opacity-100 cursor-pointer"><Trash2 className="w-4 h-4" /></button>
-                            </>
-                          ) : (
-                            <button onClick={(e) => handleToggleTrash(item, true, e)} title="Move to Trash" className="p-1.5 text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200 opacity-0 group-hover:opacity-100 cursor-pointer"><Trash2 className="w-4 h-4" /></button>
-                          )}
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="flex flex-col gap-2">
-                        <div className="flex items-center justify-between z-10">
-                          <div className="px-2 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-[10px] font-mono text-zinc-700 dark:text-zinc-300 uppercase">
-                            {ext || 'FILE'}
-                          </div>
-                          <div className="flex items-center gap-1">
-                            <button
-                              onClick={(e) => handleToggleFavorite(item, e)}
-                              title={item.isFavorite ? "Remove from Favorites" : "Add to Favorites"}
-                              className={`p-1.5 rounded-lg transition-colors cursor-pointer ${item.isFavorite ? 'text-zinc-900 dark:text-zinc-100 opacity-100' : 'text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200 opacity-0 group-hover:opacity-100'}`}
-                            >
-                              <Star className={`w-4 h-4 ${item.isFavorite ? 'fill-zinc-900 dark:fill-zinc-100' : ''}`} />
-                            </button>
-                            {activeTab === 'trash' ? (
-                              <>
-                                <button onClick={(e) => handleToggleTrash(item, false, e)} title="Restore from Trash" className="p-1.5 text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200 opacity-0 group-hover:opacity-100 cursor-pointer"><RefreshCw className="w-4 h-4" /></button>
-                                <button onClick={(e) => { e.stopPropagation(); setPendingDeleteItem(item); setShowDeleteModal(true); }} title="Delete Permanently" className="p-1.5 text-rose-500 hover:text-rose-600 opacity-0 group-hover:opacity-100 cursor-pointer"><Trash2 className="w-4 h-4" /></button>
-                              </>
-                            ) : (
-                              <button onClick={(e) => handleToggleTrash(item, true, e)} title="Move to Trash" className="p-1.5 text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200 opacity-0 group-hover:opacity-100 cursor-pointer"><Trash2 className="w-4 h-4" /></button>
-                            )}
-                          </div>
-                        </div>
-
-                        {/* Thumbnail Image / PDF Preview Header */}
-                        <div className="h-32 w-full rounded-lg overflow-hidden bg-zinc-100 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800/80 flex items-center justify-center relative group-hover:border-zinc-400 dark:hover:border-zinc-700 transition-colors">
-                          {isImage && thumbUrl ? (
-                            <img src={thumbUrl} alt={item.name} className="w-full h-full object-cover" />
-                          ) : isPdf && thumbUrl ? (
-                            <div className="w-full h-full relative overflow-hidden bg-zinc-100 dark:bg-zinc-950 pointer-events-none flex items-center justify-center">
-                              <object
-                                data={`${thumbUrl}#page=1&toolbar=0&navpanes=0&scrollbar=0`}
-                                type="application/pdf"
-                                className="w-full h-[180px] pointer-events-none border-none opacity-85 scale-90 -mt-2"
-                              >
-                                <div className="flex flex-col items-center gap-1.5 p-2">
-                                  <FileText className="w-7 h-7 text-zinc-700 dark:text-zinc-300" />
-                                  <span className="text-[10px] font-mono text-zinc-500 dark:text-zinc-400">PDF</span>
-                                </div>
-                              </object>
-                            </div>
-                          ) : (
-                            <div className="flex flex-col items-center gap-2">
-                              {getFileIcon(item)}
-                              <span className="text-[10px] font-mono text-zinc-500 uppercase">{ext || 'FILE'}</span>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    )}
-
-                    <div className="flex flex-col gap-1 pt-1">
-                      <span className="font-medium text-xs text-zinc-800 dark:text-zinc-200 truncate" title={item.name}>{item.name}</span>
-                      <div className="flex justify-between text-[11px] text-zinc-500 font-mono">
-                        <span>{item.type === 'FOLDER' ? 'Folder' : formatFileSize(item.size)}</span>
-                        <span>{new Date(item.createdAt).toLocaleDateString()}</span>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
+              {filteredItems.map((item) => (
+                <DriveItemCard
+                  key={item.id}
+                  item={item}
+                  activeTab={activeTab}
+                  thumbUrl={thumbnails[item.id]}
+                  onOpenFolder={openFolder}
+                  onOpenPreview={openPreview}
+                  onToggleFavorite={handleToggleFavorite}
+                  onToggleTrash={handleToggleTrash}
+                  onPermanentDelete={handlePermanentDeleteClick}
+                  formatFileSize={formatFileSize}
+                />
+              ))}
             </div>
           )}
         </div>
       </main>
 
-      {/* Auth Modal */}
-      {showAuthModal && (
-        <div className="fixed inset-0 bg-zinc-950/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 w-full max-w-md p-6 rounded-2xl flex flex-col gap-5">
-            <div className="flex items-center justify-between border-b border-zinc-200 dark:border-zinc-800 pb-4">
-              <h3 className="font-medium text-sm text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
-                <Key className="w-4 h-4 text-zinc-500 dark:text-zinc-400" /> Authentication Settings
-              </h3>
-              <button onClick={() => setShowAuthModal(false)} title="Close settings" className="text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 cursor-pointer">
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-            <div className="flex flex-col gap-4">
-              <div className="flex flex-col gap-1.5">
-                <label className="text-xs text-zinc-500 dark:text-zinc-400">User ID</label>
-                <input
-                  type="text"
-                  value={userId}
-                  onChange={(e) => setUserId(e.target.value)}
-                  className="bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-3 py-2 text-xs text-zinc-900 dark:text-zinc-100 outline-none focus:border-zinc-400 dark:focus:border-zinc-700"
-                />
-              </div>
-              <div className="flex flex-col gap-1.5">
-                <label className="text-xs text-zinc-500 dark:text-zinc-400">API Base URL</label>
-                <input
-                  type="text"
-                  value={apiBaseUrl}
-                  onChange={(e) => setApiBaseUrl(e.target.value)}
-                  className="bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-3 py-2 text-xs text-zinc-900 dark:text-zinc-100 outline-none focus:border-zinc-400 dark:focus:border-zinc-700"
-                />
-              </div>
-              <div className="flex flex-col gap-1.5">
-                <label className="text-xs text-zinc-500 dark:text-zinc-400">JWT Bearer Token</label>
-                <textarea
-                  value={jwtToken}
-                  onChange={(e) => setJwtToken(e.target.value)}
-                  rows={3}
-                  className="bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg p-3 text-zinc-900 dark:text-zinc-100 font-mono text-xs outline-none focus:border-zinc-400 dark:focus:border-zinc-700"
-                />
-              </div>
-            </div>
-            <div className="flex justify-end gap-3 pt-2 border-t border-zinc-200 dark:border-zinc-800">
-              <button
-                onClick={async () => {
-                  try {
-                    const res = await api.fetchToken(userId);
-                    setJwtToken(res.token);
-                    showToast('Generated new JWT token', 'success');
-                  } catch (err: any) {
-                    showToast(`Token generation failed: ${err.message}`, 'error');
-                  }
-                }}
-                title="Generate new temporary JWT token"
-                className="py-2 px-4 rounded-lg bg-zinc-200 dark:bg-zinc-800 hover:bg-zinc-300 dark:hover:bg-zinc-700 text-zinc-800 dark:text-zinc-200 font-medium text-xs transition-colors cursor-pointer"
-              >
-                Generate Token
-              </button>
-              <button
-                onClick={() => {
-                  api.setConfig(apiBaseUrl, userId, jwtToken);
-                  setShowAuthModal(false);
-                  showToast('Auth settings saved', 'success');
-                  loadItems(currentFolderId);
-                }}
-                title="Save settings"
-                className="py-2 px-4 rounded-lg bg-zinc-900 dark:bg-zinc-100 hover:bg-zinc-800 dark:hover:bg-zinc-200 text-zinc-100 dark:text-zinc-950 font-medium text-xs transition-colors cursor-pointer"
-              >
-                Save Settings
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Code-Split Modals Loaded Dynamically on Demand */}
+      <FolderModal
+        show={showFolderModal}
+        newFolderName={newFolderName}
+        onChangeName={setNewFolderName}
+        onClose={() => setShowFolderModal(false)}
+        onCreate={handleCreateFolder}
+      />
 
-      {/* Folder Creation Modal */}
-      {showFolderModal && (
-        <div className="fixed inset-0 bg-zinc-950/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 w-full max-w-md p-6 rounded-2xl flex flex-col gap-5">
-            <div className="flex items-center justify-between border-b border-zinc-200 dark:border-zinc-800 pb-4">
-              <h3 className="font-medium text-sm text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
-                <FolderPlus className="w-4 h-4 text-zinc-500 dark:text-zinc-400" /> Create New Folder
-              </h3>
-              <button onClick={() => setShowFolderModal(false)} title="Close modal" className="text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 cursor-pointer">
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs text-zinc-500 dark:text-zinc-400">Folder Name</label>
-              <input
-                type="text"
-                placeholder="e.g. Documents, Photographs, Projects"
-                value={newFolderName}
-                onChange={(e) => setNewFolderName(e.target.value)}
-                autoFocus
-                className="bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-3 py-2 text-xs text-zinc-900 dark:text-zinc-100 outline-none focus:border-zinc-400 dark:focus:border-zinc-700"
-              />
-            </div>
-            <div className="flex justify-end gap-3 pt-2 border-t border-zinc-200 dark:border-zinc-800">
-              <button onClick={() => setShowFolderModal(false)} title="Cancel folder creation" className="py-2 px-4 text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200 text-xs font-medium cursor-pointer">Cancel</button>
-              <button onClick={handleCreateFolder} title="Create folder" className="py-2 px-4 rounded-lg bg-zinc-900 dark:bg-zinc-100 hover:bg-zinc-800 dark:hover:bg-zinc-200 text-zinc-100 dark:text-zinc-950 font-medium text-xs transition-colors cursor-pointer">Create Folder</button>
-            </div>
-          </div>
-        </div>
-      )}
+      <UploadModal
+        show={showUploadModal}
+        selectedFile={selectedFile}
+        isUploading={isUploading}
+        uploadProgress={uploadProgress}
+        uploadStatus={uploadStatus}
+        onSelectFile={setSelectedFile}
+        onStartUpload={handleFileUpload}
+        onClose={() => setShowUploadModal(false)}
+        formatFileSize={formatFileSize}
+      />
 
-      {/* Upload File Modal */}
-      {showUploadModal && (
-        <div className="fixed inset-0 bg-zinc-950/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 w-full max-w-md p-6 rounded-2xl flex flex-col gap-5">
-            <div className="flex items-center justify-between border-b border-zinc-200 dark:border-zinc-800 pb-4">
-              <h3 className="font-medium text-sm text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
-                <UploadCloud className="w-4 h-4 text-zinc-500 dark:text-zinc-400" /> Upload File
-              </h3>
-              <button onClick={() => setShowUploadModal(false)} title="Close upload modal" className="text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 cursor-pointer">
-                <X className="w-4 h-4" />
-              </button>
-            </div>
+      <PreviewModal
+        show={showPreviewModal}
+        previewItem={previewItem}
+        downloadUrl={downloadUrl}
+        onClose={() => setShowPreviewModal(false)}
+        onCreateShareLink={handleCreateShareLink}
+        onDownloadClick={handleDownloadClick}
+        formatFileSize={formatFileSize}
+      />
 
-            <div
-              onClick={() => fileInputRef.current?.click()}
-              title="Click to select file from disk"
-              className="border border-dashed border-zinc-300 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-950 hover:bg-zinc-100 dark:hover:bg-zinc-900 rounded-xl p-8 text-center cursor-pointer flex flex-col items-center gap-3 transition-colors"
-            >
-              <FileUp className="w-10 h-10 text-zinc-500 dark:text-zinc-400" />
-              <p className="font-medium text-xs text-zinc-800 dark:text-zinc-200">Click or drag file here to upload</p>
-              <p className="text-[11px] text-zinc-500 dark:text-zinc-400">PDF, Images, DOCX, Code, Audio, Video</p>
-              <input
-                ref={fileInputRef}
-                type="file"
-                className="hidden"
-                onChange={(e) => {
-                  if (e.target.files && e.target.files.length > 0) {
-                    setSelectedFile(e.target.files[0]);
-                  }
-                }}
-              />
-            </div>
+      <ShareModal
+        show={showShareModal}
+        shareUrl={shareUrl}
+        onClose={() => setShowShareModal(false)}
+        onCopy={() => {
+          navigator.clipboard.writeText(shareUrl);
+          showToast('Copied share link to clipboard!', 'success');
+        }}
+      />
 
-            {selectedFile && (
-              <div className="flex flex-col gap-2 bg-zinc-50 dark:bg-zinc-950 p-4 rounded-xl border border-zinc-200 dark:border-zinc-800">
-                <div className="flex justify-between text-xs font-medium text-zinc-800 dark:text-zinc-200">
-                  <span className="truncate">{selectedFile.name}</span>
-                  <span className="text-zinc-500 dark:text-zinc-400 font-mono">{formatFileSize(selectedFile.size)}</span>
-                </div>
-                {uploadProgress > 0 && (
-                  <div className="h-1.5 bg-zinc-200 dark:bg-zinc-800 rounded-full overflow-hidden">
-                    <div className="h-full bg-zinc-900 dark:bg-zinc-100 transition-all" style={{ width: `${uploadProgress}%` }} />
-                  </div>
-                )}
-                {uploadStatus && <span className="text-[11px] text-zinc-600 dark:text-zinc-400 font-mono">{uploadStatus}</span>}
-              </div>
-            )}
+      <ConfirmDeleteModal
+        show={showDeleteModal}
+        item={pendingDeleteItem}
+        onClose={() => setShowDeleteModal(false)}
+        onConfirm={handleConfirmDelete}
+      />
 
-            <div className="flex justify-end gap-3 pt-2 border-t border-zinc-200 dark:border-zinc-800">
-              <button onClick={() => setShowUploadModal(false)} title="Cancel upload" className="py-2 px-4 text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200 text-xs font-medium cursor-pointer">Cancel</button>
-              <button
-                onClick={handleFileUpload}
-                disabled={!selectedFile || isUploading}
-                title="Start S3 file upload"
-                className="py-2 px-4 rounded-lg bg-zinc-900 dark:bg-zinc-100 hover:bg-zinc-800 dark:hover:bg-zinc-200 disabled:opacity-50 text-zinc-100 dark:text-zinc-950 font-medium text-xs transition-colors flex items-center gap-2 cursor-pointer"
-              >
-                {isUploading && <Loader className="w-4 h-4 spin" />}
-                <span>Start Upload</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* File Preview Modal */}
-      {showPreviewModal && previewItem && (
-        <div className="fixed inset-0 bg-zinc-950/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 w-full max-w-2xl p-6 rounded-2xl flex flex-col gap-5">
-            <div className="flex items-center justify-between border-b border-zinc-200 dark:border-zinc-800 pb-4">
-              <h3 className="font-medium text-sm text-zinc-900 dark:text-zinc-100 flex items-center gap-2 truncate">
-                <File className="w-4 h-4 text-zinc-500 dark:text-zinc-400" /> {previewItem.name}
-              </h3>
-              <button onClick={() => setShowPreviewModal(false)} title="Close preview" className="text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 cursor-pointer">
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            <div className="bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl p-4 flex flex-col items-center justify-center min-h-[300px]">
-              {!downloadUrl ? (
-                <div className="flex items-center gap-3 text-zinc-500 dark:text-zinc-400 py-12">
-                  <Loader className="w-5 h-5 spin text-zinc-800 dark:text-zinc-200" />
-                  <span className="text-xs">Loading live preview...</span>
-                </div>
-              ) : (() => {
-                const mime = (previewItem.mimeType || '').toLowerCase();
-                const ext = (previewItem.name || '').split('.').pop()?.toLowerCase() || '';
-
-                if (mime.includes('pdf') || ext === 'pdf') {
-                  return (
-                    <iframe
-                      src={downloadUrl}
-                      title={previewItem.name}
-                      className="w-full h-[500px] rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950"
-                    />
-                  );
-                }
-
-                if (mime.includes('image') || ['jpg', 'jpeg', 'png', 'gif', 'svg', 'webp'].includes(ext)) {
-                  return (
-                    <div className="flex items-center justify-center p-2 max-h-[500px]">
-                      <img
-                        src={downloadUrl}
-                        alt={previewItem.name}
-                        className="max-h-[460px] max-w-full rounded-lg border border-zinc-200 dark:border-zinc-800 object-contain"
-                      />
-                    </div>
-                  );
-                }
-
-                if (mime.includes('video') || ['mp4', 'webm', 'mov'].includes(ext)) {
-                  return (
-                    <video controls autoPlay src={downloadUrl} className="max-h-[460px] w-full rounded-lg border border-zinc-200 dark:border-zinc-800">
-                      Your browser does not support video playback.
-                    </video>
-                  );
-                }
-
-                if (mime.includes('audio') || ['mp3', 'wav', 'ogg'].includes(ext)) {
-                  return (
-                    <div className="w-full py-12 px-6 flex flex-col items-center gap-4 text-center">
-                      <Music className="w-12 h-12 text-zinc-700 dark:text-zinc-300" />
-                      <h4 className="font-medium text-sm text-zinc-800 dark:text-zinc-200">{previewItem.name}</h4>
-                      <audio controls src={downloadUrl} className="w-full max-w-md mt-4 rounded-lg" />
-                    </div>
-                  );
-                }
-
-                return (
-                  <div className="py-8 px-6 text-center flex flex-col items-center gap-4">
-                    <div className="w-14 h-14 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-700 dark:text-zinc-300 flex items-center justify-center">
-                      {getFileIcon(previewItem)}
-                    </div>
-                    <h4 className="font-medium text-sm text-zinc-800 dark:text-zinc-200">{previewItem.name}</h4>
-                    <p className="text-xs text-zinc-500 dark:text-zinc-400">{formatFileSize(previewItem.size)} • {previewItem.mimeType || 'Document'} • Created {new Date(previewItem.createdAt).toLocaleDateString()}</p>
-                    <div className="w-full text-left bg-white dark:bg-zinc-900 p-4 rounded-lg font-mono text-xs text-zinc-600 dark:text-zinc-400 border border-zinc-200 dark:border-zinc-800 space-y-1 mt-2">
-                      <div><strong>Item ID:</strong> {previewItem.id}</div>
-                      <div><strong>S3 Key:</strong> {previewItem.s3Key || 'N/A'}</div>
-                      <div><strong>Storage Class:</strong> INTELLIGENT_TIERING</div>
-                    </div>
-                  </div>
-                );
-              })()}
-            </div>
-
-            <div className="flex justify-end gap-3 pt-2 border-t border-zinc-200 dark:border-zinc-800">
-              <button
-                onClick={() => handleCreateShareLink(previewItem.id)}
-                title="Generate 24-hour public share URL"
-                className="py-2 px-4 rounded-lg bg-zinc-200 dark:bg-zinc-800 hover:bg-zinc-300 dark:hover:bg-zinc-700 text-zinc-800 dark:text-zinc-200 font-medium text-xs transition-colors flex items-center gap-2 cursor-pointer"
-              >
-                <Cloud className="w-4 h-4 text-zinc-500 dark:text-zinc-400" /> Share Link
-              </button>
-              <a
-                href={downloadUrl}
-                target="_blank"
-                rel="noreferrer"
-                onClick={handleDownloadClick}
-                title="Download file directly"
-                className="py-2 px-4 rounded-lg bg-zinc-900 dark:bg-zinc-100 hover:bg-zinc-800 dark:hover:bg-zinc-200 text-zinc-100 dark:text-zinc-950 font-medium text-xs transition-colors flex items-center gap-2 cursor-pointer"
-              >
-                <Download className="w-4 h-4" /> Download File
-              </a>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Share Link Modal */}
-      {showShareModal && (
-        <div className="fixed inset-0 bg-zinc-950/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 w-full max-w-md p-6 rounded-2xl flex flex-col gap-5">
-            <div className="flex items-center justify-between border-b border-zinc-200 dark:border-zinc-800 pb-4">
-              <h3 className="font-medium text-sm text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
-                <Cloud className="w-4 h-4 text-zinc-500 dark:text-zinc-400" /> Expiring Share Link
-              </h3>
-              <button onClick={() => setShowShareModal(false)} title="Close share modal" className="text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 cursor-pointer">
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-            <p className="text-xs text-zinc-500 dark:text-zinc-400">Anyone with this link can view & download this file. Link expires in <strong>24 hours</strong>.</p>
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs text-zinc-500 dark:text-zinc-400">Public Share URL</label>
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  readOnly
-                  value={shareUrl}
-                  className="bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-3 py-2 text-zinc-900 dark:text-zinc-100 font-mono text-xs outline-none flex-1 truncate"
-                />
-                <button
-                  onClick={() => {
-                    navigator.clipboard.writeText(shareUrl);
-                    showToast('Copied share link to clipboard!', 'success');
-                  }}
-                  title="Copy URL to clipboard"
-                  className="py-2 px-4 rounded-lg bg-zinc-900 dark:bg-zinc-100 hover:bg-zinc-800 dark:hover:bg-zinc-200 text-zinc-100 dark:text-zinc-950 font-medium text-xs transition-colors cursor-pointer"
-                >
-                  Copy
-                </button>
-              </div>
-            </div>
-            <div className="flex justify-end pt-2 border-t border-zinc-200 dark:border-zinc-800">
-              <button onClick={() => setShowShareModal(false)} title="Close modal" className="py-2 px-4 rounded-lg bg-zinc-200 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200 text-xs font-medium cursor-pointer">Close</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Confirm Delete Modal */}
-      {showDeleteModal && pendingDeleteItem && (
-        <div className="fixed inset-0 bg-zinc-950/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 w-full max-w-md p-6 rounded-2xl flex flex-col gap-5">
-            <div className="flex items-center justify-between border-b border-zinc-200 dark:border-zinc-800 pb-4">
-              <h3 className="font-medium text-sm text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
-                <AlertTriangle className="w-4 h-4 text-zinc-500 dark:text-zinc-400" /> Confirm Permanent Deletion
-              </h3>
-              <button onClick={() => setShowDeleteModal(false)} title="Close modal" className="text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 cursor-pointer">
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-            <p className="text-xs text-zinc-600 dark:text-zinc-300">Are you sure you want to permanently delete <strong className="text-zinc-900 dark:text-zinc-100">"{pendingDeleteItem.name}"</strong>? This will erase the file from cloud storage and cannot be undone.</p>
-            <div className="flex justify-end gap-3 pt-2 border-t border-zinc-200 dark:border-zinc-800">
-              <button onClick={() => setShowDeleteModal(false)} title="Cancel deletion" className="py-2 px-4 text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200 text-xs font-medium cursor-pointer">Cancel</button>
-              <button onClick={handleConfirmDelete} title="Permanently delete item" className="py-2 px-4 rounded-lg bg-zinc-900 dark:bg-zinc-100 hover:bg-zinc-800 dark:hover:bg-zinc-200 text-zinc-100 dark:text-zinc-950 font-medium text-xs transition-colors cursor-pointer">Delete Item</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Confirm Empty Trash Modal */}
-      {showEmptyTrashModal && (
-        <div className="fixed inset-0 bg-zinc-950/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 w-full max-w-md p-6 rounded-2xl flex flex-col gap-5">
-            <div className="flex items-center justify-between border-b border-zinc-200 dark:border-zinc-800 pb-4">
-              <h3 className="font-medium text-sm text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
-                <AlertTriangle className="w-4 h-4 text-rose-500" /> Empty Trash?
-              </h3>
-              <button onClick={() => setShowEmptyTrashModal(false)} title="Close modal" className="text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 cursor-pointer">
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-            <p className="text-xs text-zinc-600 dark:text-zinc-300">
-              Are you sure you want to permanently delete all items in Trash? This will remove files from cloud storage and <strong>cannot be undone</strong>.
-            </p>
-            <div className="flex justify-end gap-3 pt-2 border-t border-zinc-200 dark:border-zinc-800">
-              <button onClick={() => setShowEmptyTrashModal(false)} title="Cancel action" className="py-2 px-4 text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200 text-xs font-medium cursor-pointer">Cancel</button>
-              <button onClick={handleEmptyTrash} title="Confirm empty trash" className="py-2 px-4 rounded-lg bg-rose-600 hover:bg-rose-700 text-white font-medium text-xs transition-colors cursor-pointer">Empty Trash</button>
-            </div>
-          </div>
-        </div>
-      )}
+      <EmptyTrashModal
+        show={showEmptyTrashModal}
+        onClose={() => setShowEmptyTrashModal(false)}
+        onConfirm={handleEmptyTrash}
+      />
 
       {/* Minimalist Toasts Container */}
       <div className="fixed bottom-6 right-6 flex flex-col gap-2.5 z-50">

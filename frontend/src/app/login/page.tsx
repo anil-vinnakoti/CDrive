@@ -41,10 +41,8 @@ export default function LoginPage() {
 
     const loadAndRender = () => {
       if (window.google?.accounts?.id) {
-        // SDK already loaded — reinitialize and render immediately
         renderGoogleButton(clientId);
       } else {
-        // Load SDK fresh
         const existingScript = document.getElementById('google-gsi-script');
         if (!existingScript) {
           const script = document.createElement('script');
@@ -54,7 +52,6 @@ export default function LoginPage() {
           script.onload = () => renderGoogleButton(clientId);
           document.body.appendChild(script);
         } else {
-          // Script tag exists but SDK may not have initialized yet — poll
           const poll = setInterval(() => {
             if (window.google?.accounts?.id) {
               clearInterval(poll);
@@ -65,7 +62,6 @@ export default function LoginPage() {
       }
     };
 
-    // Small timeout to ensure React has rendered #googleSignInBtn into the DOM
     const t = setTimeout(loadAndRender, 100);
     return () => clearTimeout(t);
   }, [clientId]);
@@ -99,7 +95,8 @@ export default function LoginPage() {
         router.push('/');
       }
     } catch (err: any) {
-      setError(err.message || 'Google sign in failed');
+      setError(err.message || 'Google authentication failed');
+    } finally {
       setLoading(false);
     }
   };
@@ -118,59 +115,55 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen w-screen bg-slate-950 flex items-center justify-center p-4 relative overflow-hidden">
-      {/* Dynamic Background Glow Orbs */}
-      <div className="absolute top-1/4 left-1/3 w-96 h-96 bg-indigo-600/20 rounded-full blur-3xl pointer-events-none" />
-      <div className="absolute bottom-1/4 right-1/3 w-96 h-96 bg-cyan-600/20 rounded-full blur-3xl pointer-events-none" />
-
-      <div className="glass-panel w-full max-w-md p-8 flex flex-col gap-6 z-10 shadow-2xl border border-white/10 relative text-center">
-        {/* Header Branding */}
+    <div className="min-h-screen w-screen bg-zinc-950 flex items-center justify-center p-4 relative overflow-hidden text-zinc-100">
+      <div className="w-full max-w-md p-8 flex flex-col gap-6 bg-zinc-900 border border-zinc-800 rounded-2xl text-center shadow-xl">
+        {/* Minimalist Monochromatic Header Branding */}
         <div className="flex flex-col items-center gap-3">
-          <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-indigo-500 to-cyan-500 flex items-center justify-center text-white shadow-xl shadow-indigo-500/30">
-            <HardDrive className="w-9 h-9" />
+          <div className="w-14 h-14 rounded-xl bg-zinc-800 border border-zinc-700 flex items-center justify-center text-zinc-100">
+            <HardDrive className="w-7 h-7" />
           </div>
-          <h1 className="text-2xl font-bold tracking-tight text-white">CDrive Storage</h1>
-          <p className="text-xs text-slate-400">Google OAuth 2.0 Single Sign-On</p>
+          <h1 className="text-xl font-medium tracking-tight text-zinc-100">CDrive</h1>
+          <p className="text-xs text-zinc-400">Minimalist Cloud Storage</p>
         </div>
 
         {/* Error Alert */}
         {error && (
-          <div className="bg-rose-500/10 border border-rose-500/30 p-3 rounded-xl text-xs text-rose-300 text-center font-medium">
+          <div className="bg-zinc-950 border border-zinc-700 p-3 rounded-xl text-xs text-zinc-300 text-center font-mono">
             {error}
           </div>
         )}
 
         {/* Saved Success Alert */}
         {savedSuccess && (
-          <div className="bg-emerald-500/10 border border-emerald-500/30 p-3 rounded-xl text-xs text-emerald-300 text-center font-medium flex items-center justify-center gap-2">
-            <CheckCircle className="w-4 h-4" /> Google Client ID Configured!
+          <div className="bg-zinc-950 border border-zinc-700 p-3 rounded-xl text-xs text-zinc-200 text-center font-medium flex items-center justify-center gap-2">
+            <CheckCircle className="w-4 h-4 text-zinc-400" /> Client ID Configured
           </div>
         )}
 
         {/* Google OAuth Button Container */}
         {clientId ? (
           <div className="flex flex-col items-center gap-4 py-2">
-            <p className="text-xs text-slate-300">Sign in with your Google account to access your drive:</p>
+            <p className="text-xs text-zinc-400">Sign in with your Google account to access your drive:</p>
             <div id="googleSignInBtn" className="min-h-[44px] flex justify-center w-full" />
-            {loading && <p className="text-xs text-indigo-400 animate-pulse font-medium">Authenticating with Google...</p>}
-            
+            {loading && <p className="text-xs text-zinc-400 animate-pulse font-medium">Authenticating...</p>}
+
             <button
               onClick={() => {
                 localStorage.removeItem('cdrive_google_client_id');
                 setClientId('');
               }}
-              className="text-[11px] text-slate-500 hover:text-slate-400 underline pt-2"
+              className="text-[11px] text-zinc-500 hover:text-zinc-300 transition-colors pt-2"
             >
               Change Google OAuth Client ID
             </button>
           </div>
         ) : (
-          <form onSubmit={handleSaveClientId} className="flex flex-col gap-4 text-left bg-slate-900/90 p-4 rounded-xl border border-white/10">
-            <div className="flex items-center gap-2 text-indigo-400 font-semibold text-xs">
-              <Key className="w-4 h-4" /> Setup Google OAuth Client ID
+          <form onSubmit={handleSaveClientId} className="flex flex-col gap-4 text-left bg-zinc-950 p-4 rounded-xl border border-zinc-800">
+            <div className="flex items-center gap-2 text-zinc-200 font-medium text-xs">
+              <Key className="w-4 h-4 text-zinc-400" /> Setup Google OAuth Client ID
             </div>
-            <p className="text-[11px] text-slate-400 leading-relaxed">
-              Enter your Google Cloud OAuth 2.0 Client ID to enable 1-click Google Sign-In for CDrive:
+            <p className="text-[11px] text-zinc-400 leading-relaxed">
+              Enter your Google Cloud OAuth 2.0 Client ID to enable Google Sign-In:
             </p>
 
             <div className="flex flex-col gap-1.5">
@@ -180,13 +173,13 @@ export default function LoginPage() {
                 placeholder="xxxxxx-xxxxxxxx.apps.googleusercontent.com"
                 value={inputClientId}
                 onChange={(e) => setInputClientId(e.target.value)}
-                className="w-full bg-slate-950 border border-white/10 rounded-lg px-3 py-2 text-xs text-white placeholder-slate-600 outline-none focus:border-indigo-500 font-mono"
+                className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-xs text-zinc-100 placeholder-zinc-600 outline-none focus:border-zinc-600 font-mono"
               />
             </div>
 
             <button
               type="submit"
-              className="w-full py-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs shadow-md shadow-indigo-500/20 transition-all"
+              className="w-full py-2.5 rounded-lg bg-zinc-100 hover:bg-zinc-200 text-zinc-950 font-medium text-xs transition-colors"
             >
               Save Client ID & Enable Google Sign-In
             </button>
@@ -195,17 +188,17 @@ export default function LoginPage() {
               href="https://console.cloud.google.com/apis/credentials"
               target="_blank"
               rel="noreferrer"
-              className="text-[10px] text-cyan-400 hover:text-cyan-300 flex items-center justify-center gap-1 pt-1"
+              className="text-[10px] text-zinc-400 hover:text-zinc-200 flex items-center justify-center gap-1 pt-1"
             >
-              Get a free Client ID from Google Cloud Console <ExternalLink className="w-3 h-3" />
+              Get Client ID from Google Cloud Console <ExternalLink className="w-3 h-3" />
             </a>
           </form>
         )}
 
         {/* Footer Security Badge */}
-        <div className="flex items-center justify-center gap-2 text-slate-500 text-[11px] pt-3 border-t border-white/5">
-          <ShieldCheck className="w-4 h-4 text-emerald-400" />
-          <span>OAuth 2.0 Verified 256-Bit SSL Cloud Storage</span>
+        <div className="flex items-center justify-center gap-2 text-zinc-500 text-[11px] pt-3 border-t border-zinc-800/80">
+          <ShieldCheck className="w-4 h-4 text-zinc-400" />
+          <span>OAuth 2.0 Encrypted Cloud Storage</span>
         </div>
       </div>
     </div>

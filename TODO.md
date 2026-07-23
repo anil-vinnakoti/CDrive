@@ -6,7 +6,7 @@ Project feature backlog, implementation priorities, and architectural tasks for 
 
 ## 🎯 Upcoming Features Backlog
 
-### 1. 📁 Move & Copy Files and Folders (`NEW`)
+### 1. 📁 Move & Copy Files and Folders (`MEDIUM PRIORITY`)
 - [ ] **Interactive Folder Picker Modal**:
   - Tree navigation dialog to select destination target folder.
 - [ ] **Move Item Workflow (`POST /items/move`)**:
@@ -17,7 +17,7 @@ Project feature backlog, implementation priorities, and architectural tasks for 
 
 ---
 
-### 2. 🎛️ Hierarchical S3 Storage Class Tiering (Cost Optimization)
+### 2. 🎛️ Hierarchical S3 Storage Class Tiering (Cost Optimization) (`MEDIUM PRIORITY`)
 - [ ] **Drive-Level Default Setting (User Settings)**:
   - Add user preference for default upload storage tier (`INTELLIGENT_TIERING`, `GLACIER_IR`, `STANDARD`).
 - [ ] **Folder-Level Tiering & Inheritance**:
@@ -29,11 +29,16 @@ Project feature backlog, implementation priorities, and architectural tasks for 
 
 ---
 
-### 3. 📊 Storage Usage Quota & Cost Meter
-- [ ] **User Storage Aggregation**:
-  - Calculate total bytes used by the authenticated user in DynamoDB / S3.
-- [ ] **UI Progress Bar**:
-  - Render visual capacity meter in header/sidebar (e.g., `24.5 GB used — ~$0.12/mo`).
+### 3. 📊 Detailed AWS Usage, Billing Report & Storage Meter (`LOWEST PRIORITY`)
+- [ ] **Real-Time AWS Cost Explorer & CloudWatch Integration**:
+  - Integrate AWS Cost Explorer API (`ce:GetCostAndUsage`) & AWS CloudWatch Metrics (`S3/BucketSizeBytes`, `ApiGateway/Count`, `S3/BytesDownloaded`).
+  - Backend API endpoint (`GET /reports/usage`) returning exact S3 storage volume, HTTP API Gateway request counts, and data transfer out bandwidth.
+- [ ] **Granular Date Range & Filter Controls**:
+  - Allow users to filter billing reports by **Daily**, **Monthly**, **Annual**, or **Custom Date Range**.
+- [ ] **Detailed Usage Breakdown Dashboard**:
+  - Interactive UI charts breaking down costs: Storage (GB-months), API Requests (PUT/GET counts), and Bandwidth egress.
+- [ ] **Sidebar Capacity Progress Bar**:
+  - Live progress meter in sidebar showing storage quota usage (e.g., `2.4 GB of 50 GB used`).
 
 ---
 

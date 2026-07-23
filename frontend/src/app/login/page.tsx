@@ -113,7 +113,6 @@ export default function LoginPage() {
     setClientId(trimmed);
     setSavedSuccess(true);
     setError('');
-    loadGoogleSDK(trimmed);
 
     setTimeout(() => setSavedSuccess(false), 3000);
   };

@@ -9,7 +9,6 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
-	"github.com/aws/aws-sdk-go-v2/service/s3/types"
 )
 
 // Storage defines storage operation methods
@@ -38,10 +37,9 @@ func (s *S3Storage) GeneratePresignedPutURL(ctx context.Context, key string, con
 	const expiryDuration = 5 * time.Minute
 
 	req, err := s.presignClient.PresignPutObject(ctx, &s3.PutObjectInput{
-		Bucket:       aws.String(s.bucketName),
-		Key:          aws.String(key),
-		ContentType:  aws.String(contentType),
-		StorageClass: types.StorageClassIntelligentTiering,
+		Bucket:      aws.String(s.bucketName),
+		Key:         aws.String(key),
+		ContentType: aws.String(contentType),
 	}, s3.WithPresignExpires(expiryDuration))
 
 	if err != nil {

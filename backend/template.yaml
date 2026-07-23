@@ -83,6 +83,13 @@ Resources:
             AllowedOrigins:
               - '*'
             MaxAge: 3000
+      LifecycleConfiguration:
+        Rules:
+          - Id: TransitionToGlacierInstantRetrieval30Days
+            Status: Enabled
+            Transitions:
+              - TransitionInDays: 30
+                StorageClass: GLACIER_IR
 
   # ==========================================================
   # 3. S3 Bucket for UI Hosting

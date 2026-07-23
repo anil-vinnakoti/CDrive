@@ -201,18 +201,32 @@ export class CDriveClient {
     });
   }
 
-  public async uploadToS3(uploadUrl: string, file: File): Promise<void> {
-    try {
-      await fetch(uploadUrl, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': file.type || 'application/octet-stream'
-        },
-        body: file
-      });
-    } catch (err) {
-      console.warn('S3 upload notice (Local dev mode without active cloud S3 bucket):', err);
-    }
+  public async uploadToS3(uploadUrl: string, file: File, onProgress?: (progress: number) => void): Promise<void> {
+    return new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open('PUT', uploadUrl, true);
+      xhr.setRequestHeader('Content-Type', file.type || 'application/octet-stream');
+
+      if (xhr.upload && onProgress) {
+        xhr.upload.onprogress = (event) => {
+          if (event.lengthComputable) {
+            const percentComplete = Math.round((event.loaded / event.total) * 100);
+            onProgress(percentComplete);
+          }
+        };
+      }
+
+      xhr.onload = () => {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          resolve();
+        } else {
+          reject(new Error(`S3 upload failed with status ${xhr.status}`));
+        }
+      };
+
+      xhr.onerror = () => reject(new Error('S3 network error during upload'));
+      xhr.send(file);
+    });
   }
 
   public async getDownloadUrl(fileId: string): Promise<DownloadURLResponse> {

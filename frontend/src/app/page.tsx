@@ -210,15 +210,17 @@ export default function DriveApp() {
   const handleFileUpload = async () => {
     if (!selectedFile) return;
     setIsUploading(true);
-    setUploadProgress(20);
-    setUploadStatus('Requesting presigned upload URL...');
+    setUploadProgress(10);
+    setUploadStatus('Requesting S3 presigned upload URL...');
 
     try {
       const res = await api.requestUploadUrl(selectedFile, currentFolderId);
-      setUploadProgress(60);
-      setUploadStatus('Uploading binary object to S3...');
+      setUploadStatus('Uploading binary object directly to S3...');
 
-      await api.uploadToS3(res.uploadUrl, selectedFile);
+      await api.uploadToS3(res.uploadUrl, selectedFile, (pct) => {
+        setUploadProgress(pct);
+      });
+
       setUploadProgress(100);
       setUploadStatus('Upload complete!');
 

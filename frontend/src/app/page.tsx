@@ -382,14 +382,16 @@ export default function DrivePage() {
         <div className="flex flex-col gap-2.5">
           <button
             onClick={() => { setSelectedFile(null); setShowUploadModal(true); }}
-            className="w-full py-2.5 px-4 rounded-lg bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:hover:bg-zinc-200 text-zinc-100 dark:text-zinc-950 font-medium text-sm flex items-center justify-center gap-2 transition-colors shadow-sm"
+            title="Upload a new file directly to S3 cloud storage"
+            className="w-full py-2.5 px-4 rounded-lg bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:hover:bg-zinc-200 text-zinc-100 dark:text-zinc-950 font-medium text-sm flex items-center justify-center gap-2 transition-colors shadow-sm cursor-pointer"
           >
             <Plus className="w-4 h-4" />
             <span>Upload File</span>
           </button>
           <button
             onClick={() => { setNewFolderName(''); setShowFolderModal(true); }}
-            className="w-full py-2 px-4 rounded-lg bg-zinc-100 dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-800 text-zinc-800 dark:text-zinc-300 font-medium text-sm flex items-center justify-center gap-2 hover:bg-zinc-200 dark:hover:bg-zinc-800/80 transition-colors"
+            title="Create a new folder"
+            className="w-full py-2 px-4 rounded-lg bg-zinc-100 dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-800 text-zinc-800 dark:text-zinc-300 font-medium text-sm flex items-center justify-center gap-2 hover:bg-zinc-200 dark:hover:bg-zinc-800/80 transition-colors cursor-pointer"
           >
             <FolderPlus className="w-4 h-4 text-zinc-500 dark:text-zinc-400" />
             <span>New Folder</span>
@@ -399,28 +401,32 @@ export default function DrivePage() {
         <nav className="flex flex-col gap-1 flex-1">
           <button
             onClick={() => { setActiveTab('my-drive'); loadItems(currentFolderId); }}
-            className={`flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-xs font-medium transition-colors ${activeTab === 'my-drive' ? 'bg-zinc-200 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 border border-zinc-300 dark:border-zinc-700' : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200 hover:bg-zinc-200/50 dark:hover:bg-zinc-900/60'}`}
+            title="View all my files and folders"
+            className={`flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-xs font-medium transition-colors cursor-pointer ${activeTab === 'my-drive' ? 'bg-zinc-200 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 border border-zinc-300 dark:border-zinc-700' : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200 hover:bg-zinc-200/50 dark:hover:bg-zinc-900/60'}`}
           >
             <FolderOpen className="w-4 h-4 text-zinc-700 dark:text-zinc-300" />
             <span>My Drive</span>
           </button>
           <button
             onClick={() => { setActiveTab('recent'); loadItems('ALL'); }}
-            className={`flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-xs font-medium transition-colors ${activeTab === 'recent' ? 'bg-zinc-200 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 border border-zinc-300 dark:border-zinc-700' : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200 hover:bg-zinc-200/50 dark:hover:bg-zinc-900/60'}`}
+            title="View recent files"
+            className={`flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-xs font-medium transition-colors cursor-pointer ${activeTab === 'recent' ? 'bg-zinc-200 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 border border-zinc-300 dark:border-zinc-700' : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200 hover:bg-zinc-200/50 dark:hover:bg-zinc-900/60'}`}
           >
             <Clock className="w-4 h-4 text-zinc-700 dark:text-zinc-300" />
             <span>Recent</span>
           </button>
           <button
             onClick={() => { setActiveTab('favorites'); loadItems('ALL'); }}
-            className={`flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-xs font-medium transition-colors ${activeTab === 'favorites' ? 'bg-zinc-200 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 border border-zinc-300 dark:border-zinc-700' : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200 hover:bg-zinc-200/50 dark:hover:bg-zinc-900/60'}`}
+            title="View starred favorite items"
+            className={`flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-xs font-medium transition-colors cursor-pointer ${activeTab === 'favorites' ? 'bg-zinc-200 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 border border-zinc-300 dark:border-zinc-700' : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200 hover:bg-zinc-200/50 dark:hover:bg-zinc-900/60'}`}
           >
             <Star className="w-4 h-4 text-zinc-700 dark:text-zinc-300" />
             <span>Favorites</span>
           </button>
           <button
             onClick={() => { setActiveTab('trash'); loadItems('ALL'); }}
-            className={`flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-xs font-medium transition-colors ${activeTab === 'trash' ? 'bg-zinc-200 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 border border-zinc-300 dark:border-zinc-700' : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200 hover:bg-zinc-200/50 dark:hover:bg-zinc-900/60'}`}
+            title="View items in trash"
+            className={`flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-xs font-medium transition-colors cursor-pointer ${activeTab === 'trash' ? 'bg-zinc-200 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 border border-zinc-300 dark:border-zinc-700' : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200 hover:bg-zinc-200/50 dark:hover:bg-zinc-900/60'}`}
           >
             <Trash2 className="w-4 h-4 text-zinc-700 dark:text-zinc-300" />
             <span>Trash</span>
@@ -459,14 +465,18 @@ export default function DrivePage() {
               className="bg-transparent border-none outline-none text-zinc-900 dark:text-zinc-100 w-full text-xs placeholder-zinc-400 dark:placeholder-zinc-500"
             />
             {searchQuery && (
-              <button onClick={() => setSearchQuery('')} className="text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200">
+              <button onClick={() => setSearchQuery('')} title="Clear search query" className="text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 cursor-pointer">
                 <X className="w-4 h-4" />
               </button>
             )}
           </div>
 
           <div className="flex items-center gap-3">
-            <button onClick={toggleTheme} className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-2.5 text-zinc-700 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-zinc-100 rounded-xl transition-colors">
+            <button
+              onClick={toggleTheme}
+              title={theme === 'dark' ? "Switch to Light Mode" : "Switch to Dark Mode"}
+              className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-2.5 text-zinc-700 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-zinc-100 rounded-xl transition-colors cursor-pointer"
+            >
               {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
             </button>
 
@@ -487,8 +497,8 @@ export default function DrivePage() {
                   api.logout();
                   router.push('/login');
                 }}
-                title="Log Out"
-                className="text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-100 p-1 rounded-lg transition-colors ml-1"
+                title="Log Out of your CDrive account"
+                className="text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-100 p-1 rounded-lg transition-colors ml-1 cursor-pointer"
               >
                 <LogOut className="w-4 h-4" />
               </button>
@@ -503,6 +513,7 @@ export default function DrivePage() {
               <React.Fragment key={crumb.id}>
                 <span
                   onClick={() => idx < breadcrumbs.length - 1 && navigateBreadcrumb(idx)}
+                  title={idx < breadcrumbs.length - 1 ? `Navigate to ${crumb.name}` : `Current folder: ${crumb.name}`}
                   className={`${idx === breadcrumbs.length - 1 ? 'text-zinc-900 dark:text-zinc-100 font-semibold' : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200 cursor-pointer'} transition-colors`}
                 >
                   {crumb.name}
@@ -514,14 +525,14 @@ export default function DrivePage() {
 
           <div className="flex items-center gap-2">
             <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-1 rounded-lg flex gap-1">
-              <button onClick={() => setViewMode('grid')} className={`p-1.5 rounded transition-colors ${viewMode === 'grid' ? 'bg-zinc-200 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100' : 'text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200'}`}>
+              <button onClick={() => setViewMode('grid')} title="Switch to Grid View" className={`p-1.5 rounded transition-colors cursor-pointer ${viewMode === 'grid' ? 'bg-zinc-200 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100' : 'text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200'}`}>
                 <LayoutGrid className="w-4 h-4" />
               </button>
-              <button onClick={() => setViewMode('list')} className={`p-1.5 rounded transition-colors ${viewMode === 'list' ? 'bg-zinc-200 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100' : 'text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200'}`}>
+              <button onClick={() => setViewMode('list')} title="Switch to List View" className={`p-1.5 rounded transition-colors cursor-pointer ${viewMode === 'list' ? 'bg-zinc-200 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100' : 'text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200'}`}>
                 <List className="w-4 h-4" />
               </button>
             </div>
-            <button onClick={() => loadItems(currentFolderId)} className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-2.5 text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 rounded-lg transition-colors">
+            <button onClick={() => loadItems(currentFolderId)} title="Refresh Drive contents" className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-2.5 text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 rounded-lg transition-colors cursor-pointer">
               <RefreshCw className="w-4 h-4" />
             </button>
           </div>
@@ -578,14 +589,15 @@ export default function DrivePage() {
                         <div className="flex items-center gap-1">
                           <button
                             onClick={(e) => handleToggleFavorite(item, e)}
-                            className={`p-1.5 rounded-lg transition-colors ${item.isFavorite ? 'text-zinc-900 dark:text-zinc-100 opacity-100' : 'text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200 opacity-0 group-hover:opacity-100'}`}
+                            title={item.isFavorite ? "Remove from Favorites" : "Add to Favorites"}
+                            className={`p-1.5 rounded-lg transition-colors cursor-pointer ${item.isFavorite ? 'text-zinc-900 dark:text-zinc-100 opacity-100' : 'text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200 opacity-0 group-hover:opacity-100'}`}
                           >
                             <Star className={`w-4 h-4 ${item.isFavorite ? 'fill-zinc-900 dark:fill-zinc-100' : ''}`} />
                           </button>
                           {activeTab === 'trash' ? (
-                            <button onClick={(e) => handleToggleTrash(item, false, e)} title="Restore" className="p-1.5 text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200 opacity-0 group-hover:opacity-100"><RefreshCw className="w-4 h-4" /></button>
+                            <button onClick={(e) => handleToggleTrash(item, false, e)} title="Restore from Trash" className="p-1.5 text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200 opacity-0 group-hover:opacity-100 cursor-pointer"><RefreshCw className="w-4 h-4" /></button>
                           ) : (
-                            <button onClick={(e) => handleToggleTrash(item, true, e)} title="Trash" className="p-1.5 text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200 opacity-0 group-hover:opacity-100"><Trash2 className="w-4 h-4" /></button>
+                            <button onClick={(e) => handleToggleTrash(item, true, e)} title="Move to Trash" className="p-1.5 text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200 opacity-0 group-hover:opacity-100 cursor-pointer"><Trash2 className="w-4 h-4" /></button>
                           )}
                         </div>
                       </div>
@@ -598,14 +610,15 @@ export default function DrivePage() {
                           <div className="flex items-center gap-1">
                             <button
                               onClick={(e) => handleToggleFavorite(item, e)}
-                              className={`p-1.5 rounded-lg transition-colors ${item.isFavorite ? 'text-zinc-900 dark:text-zinc-100 opacity-100' : 'text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200 opacity-0 group-hover:opacity-100'}`}
+                              title={item.isFavorite ? "Remove from Favorites" : "Add to Favorites"}
+                              className={`p-1.5 rounded-lg transition-colors cursor-pointer ${item.isFavorite ? 'text-zinc-900 dark:text-zinc-100 opacity-100' : 'text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200 opacity-0 group-hover:opacity-100'}`}
                             >
                               <Star className={`w-4 h-4 ${item.isFavorite ? 'fill-zinc-900 dark:fill-zinc-100' : ''}`} />
                             </button>
                             {activeTab === 'trash' ? (
-                              <button onClick={(e) => handleToggleTrash(item, false, e)} title="Restore" className="p-1.5 text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200 opacity-0 group-hover:opacity-100"><RefreshCw className="w-4 h-4" /></button>
+                              <button onClick={(e) => handleToggleTrash(item, false, e)} title="Restore from Trash" className="p-1.5 text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200 opacity-0 group-hover:opacity-100 cursor-pointer"><RefreshCw className="w-4 h-4" /></button>
                             ) : (
-                              <button onClick={(e) => handleToggleTrash(item, true, e)} title="Trash" className="p-1.5 text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200 opacity-0 group-hover:opacity-100"><Trash2 className="w-4 h-4" /></button>
+                              <button onClick={(e) => handleToggleTrash(item, true, e)} title="Move to Trash" className="p-1.5 text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200 opacity-0 group-hover:opacity-100 cursor-pointer"><Trash2 className="w-4 h-4" /></button>
                             )}
                           </div>
                         </div>
@@ -660,7 +673,7 @@ export default function DrivePage() {
               <h3 className="font-medium text-sm text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
                 <Key className="w-4 h-4 text-zinc-500 dark:text-zinc-400" /> Authentication Settings
               </h3>
-              <button onClick={() => setShowAuthModal(false)} className="text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200">
+              <button onClick={() => setShowAuthModal(false)} title="Close settings" className="text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 cursor-pointer">
                 <X className="w-4 h-4" />
               </button>
             </div>
@@ -704,7 +717,8 @@ export default function DrivePage() {
                     showToast(`Token generation failed: ${err.message}`, 'error');
                   }
                 }}
-                className="py-2 px-4 rounded-lg bg-zinc-200 dark:bg-zinc-800 hover:bg-zinc-300 dark:hover:bg-zinc-700 text-zinc-800 dark:text-zinc-200 font-medium text-xs transition-colors"
+                title="Generate new temporary JWT token"
+                className="py-2 px-4 rounded-lg bg-zinc-200 dark:bg-zinc-800 hover:bg-zinc-300 dark:hover:bg-zinc-700 text-zinc-800 dark:text-zinc-200 font-medium text-xs transition-colors cursor-pointer"
               >
                 Generate Token
               </button>
@@ -715,7 +729,8 @@ export default function DrivePage() {
                   showToast('Auth settings saved', 'success');
                   loadItems(currentFolderId);
                 }}
-                className="py-2 px-4 rounded-lg bg-zinc-900 dark:bg-zinc-100 hover:bg-zinc-800 dark:hover:bg-zinc-200 text-zinc-100 dark:text-zinc-950 font-medium text-xs transition-colors"
+                title="Save settings"
+                className="py-2 px-4 rounded-lg bg-zinc-900 dark:bg-zinc-100 hover:bg-zinc-800 dark:hover:bg-zinc-200 text-zinc-100 dark:text-zinc-950 font-medium text-xs transition-colors cursor-pointer"
               >
                 Save Settings
               </button>
@@ -732,7 +747,7 @@ export default function DrivePage() {
               <h3 className="font-medium text-sm text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
                 <FolderPlus className="w-4 h-4 text-zinc-500 dark:text-zinc-400" /> Create New Folder
               </h3>
-              <button onClick={() => setShowFolderModal(false)} className="text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200">
+              <button onClick={() => setShowFolderModal(false)} title="Close modal" className="text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 cursor-pointer">
                 <X className="w-4 h-4" />
               </button>
             </div>
@@ -748,8 +763,8 @@ export default function DrivePage() {
               />
             </div>
             <div className="flex justify-end gap-3 pt-2 border-t border-zinc-200 dark:border-zinc-800">
-              <button onClick={() => setShowFolderModal(false)} className="py-2 px-4 text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200 text-xs font-medium">Cancel</button>
-              <button onClick={handleCreateFolder} className="py-2 px-4 rounded-lg bg-zinc-900 dark:bg-zinc-100 hover:bg-zinc-800 dark:hover:bg-zinc-200 text-zinc-100 dark:text-zinc-950 font-medium text-xs transition-colors">Create Folder</button>
+              <button onClick={() => setShowFolderModal(false)} title="Cancel folder creation" className="py-2 px-4 text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200 text-xs font-medium cursor-pointer">Cancel</button>
+              <button onClick={handleCreateFolder} title="Create folder" className="py-2 px-4 rounded-lg bg-zinc-900 dark:bg-zinc-100 hover:bg-zinc-800 dark:hover:bg-zinc-200 text-zinc-100 dark:text-zinc-950 font-medium text-xs transition-colors cursor-pointer">Create Folder</button>
             </div>
           </div>
         </div>
@@ -763,13 +778,14 @@ export default function DrivePage() {
               <h3 className="font-medium text-sm text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
                 <UploadCloud className="w-4 h-4 text-zinc-500 dark:text-zinc-400" /> Upload File
               </h3>
-              <button onClick={() => setShowUploadModal(false)} className="text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200">
+              <button onClick={() => setShowUploadModal(false)} title="Close upload modal" className="text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 cursor-pointer">
                 <X className="w-4 h-4" />
               </button>
             </div>
 
             <div
               onClick={() => fileInputRef.current?.click()}
+              title="Click to select file from disk"
               className="border border-dashed border-zinc-300 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-950 hover:bg-zinc-100 dark:hover:bg-zinc-900 rounded-xl p-8 text-center cursor-pointer flex flex-col items-center gap-3 transition-colors"
             >
               <FileUp className="w-10 h-10 text-zinc-500 dark:text-zinc-400" />
@@ -803,11 +819,12 @@ export default function DrivePage() {
             )}
 
             <div className="flex justify-end gap-3 pt-2 border-t border-zinc-200 dark:border-zinc-800">
-              <button onClick={() => setShowUploadModal(false)} className="py-2 px-4 text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200 text-xs font-medium">Cancel</button>
+              <button onClick={() => setShowUploadModal(false)} title="Cancel upload" className="py-2 px-4 text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200 text-xs font-medium cursor-pointer">Cancel</button>
               <button
                 onClick={handleFileUpload}
                 disabled={!selectedFile || isUploading}
-                className="py-2 px-4 rounded-lg bg-zinc-900 dark:bg-zinc-100 hover:bg-zinc-800 dark:hover:bg-zinc-200 disabled:opacity-50 text-zinc-100 dark:text-zinc-950 font-medium text-xs transition-colors flex items-center gap-2"
+                title="Start S3 file upload"
+                className="py-2 px-4 rounded-lg bg-zinc-900 dark:bg-zinc-100 hover:bg-zinc-800 dark:hover:bg-zinc-200 disabled:opacity-50 text-zinc-100 dark:text-zinc-950 font-medium text-xs transition-colors flex items-center gap-2 cursor-pointer"
               >
                 {isUploading && <Loader className="w-4 h-4 spin" />}
                 <span>Start Upload</span>
@@ -825,7 +842,7 @@ export default function DrivePage() {
               <h3 className="font-medium text-sm text-zinc-900 dark:text-zinc-100 flex items-center gap-2 truncate">
                 <File className="w-4 h-4 text-zinc-500 dark:text-zinc-400" /> {previewItem.name}
               </h3>
-              <button onClick={() => setShowPreviewModal(false)} className="text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200">
+              <button onClick={() => setShowPreviewModal(false)} title="Close preview" className="text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 cursor-pointer">
                 <X className="w-4 h-4" />
               </button>
             </div>
@@ -900,7 +917,8 @@ export default function DrivePage() {
             <div className="flex justify-end gap-3 pt-2 border-t border-zinc-200 dark:border-zinc-800">
               <button
                 onClick={() => handleCreateShareLink(previewItem.id)}
-                className="py-2 px-4 rounded-lg bg-zinc-200 dark:bg-zinc-800 hover:bg-zinc-300 dark:hover:bg-zinc-700 text-zinc-800 dark:text-zinc-200 font-medium text-xs transition-colors flex items-center gap-2"
+                title="Generate 24-hour public share URL"
+                className="py-2 px-4 rounded-lg bg-zinc-200 dark:bg-zinc-800 hover:bg-zinc-300 dark:hover:bg-zinc-700 text-zinc-800 dark:text-zinc-200 font-medium text-xs transition-colors flex items-center gap-2 cursor-pointer"
               >
                 <Cloud className="w-4 h-4 text-zinc-500 dark:text-zinc-400" /> Share Link
               </button>
@@ -909,7 +927,8 @@ export default function DrivePage() {
                 target="_blank"
                 rel="noreferrer"
                 onClick={handleDownloadClick}
-                className="py-2 px-4 rounded-lg bg-zinc-900 dark:bg-zinc-100 hover:bg-zinc-800 dark:hover:bg-zinc-200 text-zinc-100 dark:text-zinc-950 font-medium text-xs transition-colors flex items-center gap-2"
+                title="Download file directly"
+                className="py-2 px-4 rounded-lg bg-zinc-900 dark:bg-zinc-100 hover:bg-zinc-800 dark:hover:bg-zinc-200 text-zinc-100 dark:text-zinc-950 font-medium text-xs transition-colors flex items-center gap-2 cursor-pointer"
               >
                 <Download className="w-4 h-4" /> Download File
               </a>
@@ -926,7 +945,7 @@ export default function DrivePage() {
               <h3 className="font-medium text-sm text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
                 <Cloud className="w-4 h-4 text-zinc-500 dark:text-zinc-400" /> Expiring Share Link
               </h3>
-              <button onClick={() => setShowShareModal(false)} className="text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200">
+              <button onClick={() => setShowShareModal(false)} title="Close share modal" className="text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 cursor-pointer">
                 <X className="w-4 h-4" />
               </button>
             </div>
@@ -945,14 +964,15 @@ export default function DrivePage() {
                     navigator.clipboard.writeText(shareUrl);
                     showToast('Copied share link to clipboard!', 'success');
                   }}
-                  className="py-2 px-4 rounded-lg bg-zinc-900 dark:bg-zinc-100 hover:bg-zinc-800 dark:hover:bg-zinc-200 text-zinc-100 dark:text-zinc-950 font-medium text-xs transition-colors"
+                  title="Copy URL to clipboard"
+                  className="py-2 px-4 rounded-lg bg-zinc-900 dark:bg-zinc-100 hover:bg-zinc-800 dark:hover:bg-zinc-200 text-zinc-100 dark:text-zinc-950 font-medium text-xs transition-colors cursor-pointer"
                 >
                   Copy
                 </button>
               </div>
             </div>
             <div className="flex justify-end pt-2 border-t border-zinc-200 dark:border-zinc-800">
-              <button onClick={() => setShowShareModal(false)} className="py-2 px-4 rounded-lg bg-zinc-200 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200 text-xs font-medium">Close</button>
+              <button onClick={() => setShowShareModal(false)} title="Close modal" className="py-2 px-4 rounded-lg bg-zinc-200 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200 text-xs font-medium cursor-pointer">Close</button>
             </div>
           </div>
         </div>
@@ -966,14 +986,14 @@ export default function DrivePage() {
               <h3 className="font-medium text-sm text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
                 <AlertTriangle className="w-4 h-4 text-zinc-500 dark:text-zinc-400" /> Confirm Deletion
               </h3>
-              <button onClick={() => setShowDeleteModal(false)} className="text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200">
+              <button onClick={() => setShowDeleteModal(false)} title="Close modal" className="text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 cursor-pointer">
                 <X className="w-4 h-4" />
               </button>
             </div>
             <p className="text-xs text-zinc-600 dark:text-zinc-300">Are you sure you want to delete <strong className="text-zinc-900 dark:text-zinc-100">"{pendingDeleteItem.name}"</strong>?</p>
             <div className="flex justify-end gap-3 pt-2 border-t border-zinc-200 dark:border-zinc-800">
-              <button onClick={() => setShowDeleteModal(false)} className="py-2 px-4 text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200 text-xs font-medium">Cancel</button>
-              <button onClick={handleConfirmDelete} className="py-2 px-4 rounded-lg bg-zinc-900 dark:bg-zinc-100 hover:bg-zinc-800 dark:hover:bg-zinc-200 text-zinc-100 dark:text-zinc-950 font-medium text-xs transition-colors">Delete Item</button>
+              <button onClick={() => setShowDeleteModal(false)} title="Cancel deletion" className="py-2 px-4 text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200 text-xs font-medium cursor-pointer">Cancel</button>
+              <button onClick={handleConfirmDelete} title="Permanently delete item" className="py-2 px-4 rounded-lg bg-zinc-900 dark:bg-zinc-100 hover:bg-zinc-800 dark:hover:bg-zinc-200 text-zinc-100 dark:text-zinc-950 font-medium text-xs transition-colors cursor-pointer">Delete Item</button>
             </div>
           </div>
         </div>

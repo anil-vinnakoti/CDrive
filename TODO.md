@@ -42,6 +42,26 @@ Project feature backlog, implementation priorities, and architectural tasks for 
 
 ---
 
+### 4. 📱 Responsive Design for All Screen Sizes (`HIGH PRIORITY`)
+- [ ] **Landing Page (`/`)**:
+  - [ ] Mobile hamburger menu replacing desktop nav links.
+  - [ ] Hero section font scale & CTA button stacking on small screens.
+  - [ ] S3 Simulator and Cost Calculator sections full-width on mobile.
+  - [ ] Floating Apple Glass navbar collapses gracefully on mobile.
+- [ ] **Drive App (`/drive`)**:
+  - [ ] Sidebar collapses to a slide-over drawer on mobile (toggle button in topbar).
+  - [ ] Topbar search field full-width on mobile, icon-only on narrow viewports.
+  - [ ] File grid adapts: `grid-cols-1` on mobile → `grid-cols-2` on tablet → `grid-cols-4` on desktop.
+  - [ ] Breadcrumb truncation on small screens (show only last 2 levels).
+  - [ ] Action toolbar (sort, view toggle) collapses to icon-only on mobile.
+- [ ] **Modals**:
+  - [ ] Full-screen sheet style on mobile (bottom-sheet pattern for Upload, Folder, Rename).
+  - [ ] Preview modal full-screen on mobile with swipe-to-dismiss.
+- [ ] **Login Page (`/login`)**:
+  - [ ] Center card vertically & horizontally, full-width on very small screens.
+
+---
+
 ## ✅ Completed Features
 
 - [x] **1-Click Google OAuth 2.0 Login & User Authentication**

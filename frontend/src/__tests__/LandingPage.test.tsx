@@ -16,7 +16,7 @@ describe('Futuristic LandingPage Component', () => {
   it('renders branding title and futuristic telemetry badges', () => {
     render(<FuturisticLandingPage />);
 
-    expect(screen.getByText('OBSIDIAN CLOUD STORAGE FOR DEVELOPERS & CREATORS.')).toBeInTheDocument();
+    expect(screen.getByText('Serverless cloud storage, refined.')).toBeInTheDocument();
     expect(screen.getByText('SYS_ENGINE // DIRECT S3 PRESIGNED PROTOCOL')).toBeInTheDocument();
     expect(screen.getByText('Direct S3 Presigned PUTs')).toBeInTheDocument();
   });

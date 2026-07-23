@@ -124,9 +124,8 @@ Before developing locally, ensure the following tooling is installed:
 | Tool | Version Requirement | Purpose | Verification Command |
 | :--- | :--- | :--- | :--- |
 | **Go** | 1.22 or higher | Backend Go Lambda runtime | `go version` |
-| **AWS SAM CLI** | Latest | Infrastructure build & local API container runner | `sam --version` |
-| **AWS CLI** | v2.x | Local DynamoDB management & Cloud deployment | `aws --version` |
-| **Docker Desktop** | Latest | Container runtime for SAM Lambda emulation & DynamoDB local | `docker --version` |
+| **AWS SAM CLI** | Latest | Infrastructure build & deployment | `sam --version` |
+| **AWS CLI** | v2.x | AWS Cloud resource management | `aws --version` |
 | **Make** | Any standard `make` | Task automation & build script execution | `make --version` |
 
 ---
@@ -144,37 +143,18 @@ git clone <repository-url>
 cd CDrive/backend
 ```
 
-Ensure `backend/env.dev.json` contains local environment variables:
+Ensure `backend/env.dev.json` contains development environment variables pointing to your AWS dev stack:
 
 ```json
 {
   "CDriveApiFunction": {
     "STAGE": "dev",
-    "TABLE_NAME": "CustomDriveData",
+    "TABLE_NAME": "CustomDriveData-dev",
     "BUCKET_NAME": "cdrive-file-storage-dev",
     "GSI_FOLDER_INDEX": "FolderIdIndex",
-    "AWS_ENDPOINT_URL_DYNAMODB": "http://host.docker.internal:8000",
-    "AWS_REGION": "ap-south-1",
-    "AWS_ACCESS_KEY_ID": "local",
-    "AWS_SECRET_ACCESS_KEY": "local"
+    "AWS_REGION": "ap-south-1"
   }
 }
-```
-
----
-
-### Step 2: Local DynamoDB Database
-
-Launch the official Amazon DynamoDB Local image in Docker:
-
-```bash
-docker run -d -p 8000:8000 --name cdrive-dynamodb-local amazon/dynamodb-local
-```
-
-Verify that the container is running:
-
-```bash
-docker ps --filter name=cdrive-dynamodb-local
 ```
 
 ---

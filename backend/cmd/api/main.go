@@ -73,16 +73,13 @@ func init() {
 
 	logger.Info("initialized backend config", "region", cfg.Region, "tableName", tableName, "bucketName", bucketName)
 
-	// Support custom DynamoDB local endpoint if configured or running in SAM Local
+	// Support custom DynamoDB endpoint if explicitly configured in environment
 	dynamoEndpoint := os.Getenv("AWS_ENDPOINT_URL_DYNAMODB")
 	if dynamoEndpoint == "" {
 		dynamoEndpoint = os.Getenv("DYNAMODB_ENDPOINT")
 	}
 	if dynamoEndpoint == "" {
 		dynamoEndpoint = os.Getenv("AWS_ENDPOINT_URL")
-	}
-	if dynamoEndpoint == "" && os.Getenv("AWS_SAM_LOCAL") == "true" {
-		dynamoEndpoint = "http://host.docker.internal:8000"
 	}
 
 	var dynamoClient *dynamodb.Client

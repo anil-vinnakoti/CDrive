@@ -1,6 +1,9 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 :root {
+  color-scheme: dark;
   --bg-app: #09090b;
   --bg-sidebar: #09090b;
   --bg-card: #18181b;
@@ -20,6 +23,7 @@
 }
 
 [data-theme="light"] {
+  color-scheme: light;
   --bg-app: #f4f4f5;
   --bg-sidebar: #ffffff;
   --bg-card: #ffffff;
@@ -45,6 +49,7 @@ body {
   overflow-x: hidden;
   font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, sans-serif;
   letter-spacing: -0.01em;
+  transition: background-color 0.2s ease, color 0.2s ease;
 }
 
 .theme-app {

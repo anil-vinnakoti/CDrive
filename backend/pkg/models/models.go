@@ -4,18 +4,53 @@ import "time"
 
 // DriveItem represents a file or folder record stored in DynamoDB
 type DriveItem struct {
-	PK        string    `dynamodbav:"PK" json:"pk"`
-	SK        string    `dynamodbav:"SK" json:"sk"`
-	ID        string    `dynamodbav:"ID" json:"id"`
-	UserID    string    `dynamodbav:"UserID" json:"userId"`
-	FolderID  string    `dynamodbav:"FolderID,omitempty" json:"folderId,omitempty"`
-	Type      string    `dynamodbav:"Type" json:"type"` // "FILE" or "FOLDER"
-	Name      string    `dynamodbav:"Name" json:"name"`
-	Size      int64     `dynamodbav:"Size,omitempty" json:"size,omitempty"`
-	MimeType  string    `dynamodbav:"MimeType,omitempty" json:"mimeType,omitempty"`
-	S3Key     string    `dynamodbav:"S3Key,omitempty" json:"s3Key,omitempty"`
-	CreatedAt time.Time `dynamodbav:"CreatedAt" json:"createdAt"`
-	UpdatedAt time.Time `dynamodbav:"UpdatedAt" json:"updatedAt"`
+	PK        string     `dynamodbav:"PK" json:"pk"`
+	SK        string     `dynamodbav:"SK" json:"sk"`
+	ID        string     `dynamodbav:"ID" json:"id"`
+	UserID    string     `dynamodbav:"UserID" json:"userId"`
+	FolderID  string     `dynamodbav:"FolderID,omitempty" json:"folderId,omitempty"`
+	Type      string     `dynamodbav:"Type" json:"type"` // "FILE" or "FOLDER"
+	Name      string     `dynamodbav:"Name" json:"name"`
+	Size      int64      `dynamodbav:"Size,omitempty" json:"size,omitempty"`
+	MimeType  string     `dynamodbav:"MimeType,omitempty" json:"mimeType,omitempty"`
+	S3Key     string     `dynamodbav:"S3Key,omitempty" json:"s3Key,omitempty"`
+	IsFavorite bool      `dynamodbav:"IsFavorite" json:"isFavorite"`
+	IsTrashed  bool      `dynamodbav:"IsTrashed" json:"isTrashed"`
+	TrashedAt *time.Time `dynamodbav:"TrashedAt,omitempty" json:"trashedAt,omitempty"`
+	CreatedAt time.Time  `dynamodbav:"CreatedAt" json:"createdAt"`
+	UpdatedAt time.Time  `dynamodbav:"UpdatedAt" json:"updatedAt"`
+}
+
+// FavoriteItemRequest represents the request to star/unstar an item
+type FavoriteItemRequest struct {
+	UserID     string `json:"userId"`
+	ItemID     string `json:"itemId"`
+	Type       string `json:"type"`
+	IsFavorite bool   `json:"isFavorite"`
+}
+
+// TrashItemRequest represents the request to trash or restore an item
+type TrashItemRequest struct {
+	UserID    string `json:"userId"`
+	ItemID    string `json:"itemId"`
+	Type      string `json:"type"`
+	IsTrashed bool   `json:"isTrashed"`
+}
+
+// ShareItemRequest represents the payload to create a shareable expiring link
+type ShareItemRequest struct {
+	UserID           string `json:"userId"`
+	FileID           string `json:"fileId"`
+	ExpiresInSeconds int    `json:"expiresInSeconds"` // Default: 86400 (24h)
+}
+
+// ShareItemResponse represents the public share URL payload
+type ShareItemResponse struct {
+	ShareID     string    `json:"shareId"`
+	FileID      string    `json:"fileId"`
+	FileName    string    `json:"fileName"`
+	DownloadURL string    `json:"downloadUrl"`
+	ExpiresAt   time.Time `json:"expiresAt"`
 }
 
 // UploadRequest represents the payload to request a presigned upload URL

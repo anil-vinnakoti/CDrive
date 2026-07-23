@@ -26,6 +26,9 @@ var (
 	downloadHandler *handlers.DownloadHandler
 	folderHandler   *handlers.FolderHandler
 	deleteHandler   *handlers.DeleteHandler
+	favoriteHandler *handlers.FavoriteHandler
+	trashHandler    *handlers.TrashHandler
+	shareHandler    *handlers.ShareHandler
 	logger          *slog.Logger
 )
 
@@ -103,6 +106,9 @@ func init() {
 	downloadHandler = handlers.NewDownloadHandler(repo, store, jwtAuth)
 	folderHandler = handlers.NewFolderHandler(repo, jwtAuth)
 	deleteHandler = handlers.NewDeleteHandler(repo, store, jwtAuth)
+	favoriteHandler = handlers.NewFavoriteHandler(repo, jwtAuth)
+	trashHandler = handlers.NewTrashHandler(repo, jwtAuth)
+	shareHandler = handlers.NewShareHandler(repo, store, jwtAuth)
 }
 
 func router(ctx context.Context, request events.APIGatewayV2HTTPRequest) (events.APIGatewayV2HTTPResponse, error) {
@@ -117,6 +123,16 @@ func router(ctx context.Context, request events.APIGatewayV2HTTPRequest) (events
 	logger.Info("incoming request", "rawPath", rawPath, "normalizedPath", normalizedPath, "method", method)
 
 	switch {
+	case method == "OPTIONS":
+		return events.APIGatewayV2HTTPResponse{
+			StatusCode: http.StatusOK,
+			Headers: map[string]string{
+				"Access-Control-Allow-Origin":  "*",
+				"Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+				"Access-Control-Allow-Headers": "Content-Type, Authorization",
+			},
+		}, nil
+
 	case method == "POST" && (normalizedPath == "/auth/token" || normalizedPath == "/auth/login"):
 		return authHandler.HandleTokenGen(ctx, request)
 
@@ -131,6 +147,15 @@ func router(ctx context.Context, request events.APIGatewayV2HTTPRequest) (events
 
 	case method == "GET" && (normalizedPath == "/folders/contents" || normalizedPath == "/folders" || normalizedPath == "/files"):
 		return folderHandler.ListFolderContents(ctx, request)
+
+	case method == "POST" && (normalizedPath == "/items/favorite" || normalizedPath == "/favorite"):
+		return favoriteHandler.HandleFavorite(ctx, request)
+
+	case method == "POST" && (normalizedPath == "/items/trash" || normalizedPath == "/trash" || normalizedPath == "/restore"):
+		return trashHandler.HandleTrash(ctx, request)
+
+	case method == "POST" && (normalizedPath == "/files/share" || normalizedPath == "/share"):
+		return shareHandler.HandleCreateShare(ctx, request)
 
 	case (method == "DELETE" || method == "POST") && (normalizedPath == "/delete" || normalizedPath == "/items/delete" || normalizedPath == "/files/delete" || normalizedPath == "/folders/delete"):
 		return deleteHandler.HandleDelete(ctx, request)

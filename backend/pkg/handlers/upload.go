@@ -120,8 +120,10 @@ func jsonResponse(statusCode int, body interface{}) (events.APIGatewayV2HTTPResp
 		StatusCode: statusCode,
 		Body:       string(jsonBytes),
 		Headers: map[string]string{
-			"Content-Type":                "application/json",
-			"Access-Control-Allow-Origin": "*",
+			"Content-Type":                 "application/json",
+			"Access-Control-Allow-Origin":  "*",
+			"Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+			"Access-Control-Allow-Headers": "Content-Type, Authorization",
 		},
 	}, nil
 }

@@ -18,6 +18,8 @@ type Repository interface {
 	GetItem(ctx context.Context, pk string, sk string) (*models.DriveItem, error)
 	GetItemsByUserID(ctx context.Context, userID string) ([]models.DriveItem, error)
 	GetItemsByFolderID(ctx context.Context, folderID string) ([]models.DriveItem, error)
+	UpdateFavoriteStatus(ctx context.Context, pk string, sk string, isFavorite bool) error
+	UpdateTrashStatus(ctx context.Context, pk string, sk string, isTrashed bool) error
 	DeleteItem(ctx context.Context, pk string, sk string) error
 }
 
@@ -133,6 +135,44 @@ func (r *DynamoRepository) GetItemsByFolderID(ctx context.Context, folderID stri
 	}
 
 	return items, nil
+}
+
+// UpdateFavoriteStatus updates the IsFavorite attribute of a DriveItem
+func (r *DynamoRepository) UpdateFavoriteStatus(ctx context.Context, pk string, sk string, isFavorite bool) error {
+	_, err := r.client.UpdateItem(ctx, &dynamodb.UpdateItemInput{
+		TableName: aws.String(r.tableName),
+		Key: map[string]types.AttributeValue{
+			"PK": &types.AttributeValueMemberS{Value: pk},
+			"SK": &types.AttributeValueMemberS{Value: sk},
+		},
+		UpdateExpression: aws.String("SET IsFavorite = :fav"),
+		ExpressionAttributeValues: map[string]types.AttributeValue{
+			":fav": &types.AttributeValueMemberBOOL{Value: isFavorite},
+		},
+	})
+	if err != nil {
+		return fmt.Errorf("failed to update favorite status: %w", err)
+	}
+	return nil
+}
+
+// UpdateTrashStatus updates the IsTrashed attribute of a DriveItem
+func (r *DynamoRepository) UpdateTrashStatus(ctx context.Context, pk string, sk string, isTrashed bool) error {
+	_, err := r.client.UpdateItem(ctx, &dynamodb.UpdateItemInput{
+		TableName: aws.String(r.tableName),
+		Key: map[string]types.AttributeValue{
+			"PK": &types.AttributeValueMemberS{Value: pk},
+			"SK": &types.AttributeValueMemberS{Value: sk},
+		},
+		UpdateExpression: aws.String("SET IsTrashed = :trashed"),
+		ExpressionAttributeValues: map[string]types.AttributeValue{
+			":trashed": &types.AttributeValueMemberBOOL{Value: isTrashed},
+		},
+	})
+	if err != nil {
+		return fmt.Errorf("failed to update trash status: %w", err)
+	}
+	return nil
 }
 
 // DeleteItem removes a record from DynamoDB by PK and SK

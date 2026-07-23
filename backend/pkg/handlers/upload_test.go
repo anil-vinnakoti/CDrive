@@ -15,11 +15,13 @@ import (
 
 // MockRepo mocks the DynamoDB repository interface
 type MockRepo struct {
-	PutItemFunc            func(ctx context.Context, item models.DriveItem) error
-	GetItemFunc            func(ctx context.Context, pk, sk string) (*models.DriveItem, error)
-	GetItemsByUserIDFunc   func(ctx context.Context, userID string) ([]models.DriveItem, error)
-	GetItemsByFolderIDFunc func(ctx context.Context, folderID string) ([]models.DriveItem, error)
-	DeleteItemFunc         func(ctx context.Context, pk, sk string) error
+	PutItemFunc              func(ctx context.Context, item models.DriveItem) error
+	GetItemFunc              func(ctx context.Context, pk, sk string) (*models.DriveItem, error)
+	GetItemsByUserIDFunc     func(ctx context.Context, userID string) ([]models.DriveItem, error)
+	GetItemsByFolderIDFunc   func(ctx context.Context, folderID string) ([]models.DriveItem, error)
+	UpdateFavoriteStatusFunc func(ctx context.Context, pk, sk string, isFavorite bool) error
+	UpdateTrashStatusFunc    func(ctx context.Context, pk, sk string, isTrashed bool) error
+	DeleteItemFunc           func(ctx context.Context, pk, sk string) error
 }
 
 func (m *MockRepo) PutItem(ctx context.Context, item models.DriveItem) error {
@@ -48,6 +50,20 @@ func (m *MockRepo) GetItemsByFolderID(ctx context.Context, folderID string) ([]m
 		return m.GetItemsByFolderIDFunc(ctx, folderID)
 	}
 	return []models.DriveItem{}, nil
+}
+
+func (m *MockRepo) UpdateFavoriteStatus(ctx context.Context, pk, sk string, isFavorite bool) error {
+	if m.UpdateFavoriteStatusFunc != nil {
+		return m.UpdateFavoriteStatusFunc(ctx, pk, sk, isFavorite)
+	}
+	return nil
+}
+
+func (m *MockRepo) UpdateTrashStatus(ctx context.Context, pk, sk string, isTrashed bool) error {
+	if m.UpdateTrashStatusFunc != nil {
+		return m.UpdateTrashStatusFunc(ctx, pk, sk, isTrashed)
+	}
+	return nil
 }
 
 func (m *MockRepo) DeleteItem(ctx context.Context, pk, sk string) error {

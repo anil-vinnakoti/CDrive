@@ -366,6 +366,7 @@ All primary build and run workflows are defined in [backend/Makefile](backend/Ma
 
 | Target Command | Description |
 | :--- | :--- |
+| `make start-ui` | Launches UI Web Server at `http://localhost:8005` |
 | `make start-dev` | Builds Lambda binary and launches local SAM API Gateway using `env.dev.json` |
 | `make start-prod-local` | Launches local SAM API Gateway using `env.prod.json` |
 | `make build` | Compiles ARM64 Linux `bootstrap` Go binary to `bin/bootstrap` |

@@ -1,0 +1,58 @@
+name: Deploy to AWS Dev Environment (dev)
+
+on:
+  push:
+    branches: [ main, develop ]
+  workflow_dispatch:
+
+jobs:
+  deploy-dev-backend:
+    name: Build & Deploy Dev Stack to AWS
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: ./backend
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+          cache-dependency-path: backend/go.sum
+
+      - name: Set up AWS SAM CLI
+        uses: aws-actions/setup-sam@v2
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ap-south-1
+
+      - name: Run Go Unit Tests
+        run: go test -v ./...
+
+      - name: Build & Deploy Dev Stack to AWS
+        run: |
+          sam build
+          sam deploy \
+            --template-file .aws-sam/build/template.yaml \
+            --stack-name cdrive-backend-dev \
+            --capabilities CAPABILITY_IAM \
+            --parameter-overrides Stage=dev \
+            --no-confirm-changeset \
+            --no-fail-on-empty-changeset \
+            --region ap-south-1
+
+      - name: Output AWS Dev API URL
+        run: |
+          API_URL=$(aws cloudformation describe-stacks --stack-name cdrive-backend-dev --query "Stacks[0].Outputs[?OutputKey=='HttpApiUrl'].OutputValue" --output text --region ap-south-1)
+          echo "AWS Dev API Gateway URL: ${API_URL}"
+          echo "AWS_DEV_API_URL=${API_URL}" >> $GITHUB_ENV
+          echo "### AWS Dev Backend Deployed 🚀" >> $GITHUB_STEP_SUMMARY
+          echo "Connect your Local UI to: \`${API_URL}api/v1\`" >> $GITHUB_STEP_SUMMARY

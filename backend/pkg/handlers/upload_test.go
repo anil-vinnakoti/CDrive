@@ -73,6 +73,18 @@ func (m *MockRepo) DeleteItem(ctx context.Context, pk, sk string) error {
 	return nil
 }
 
+func (m *MockRepo) CreateUser(ctx context.Context, user *models.User) error {
+	return nil
+}
+
+func (m *MockRepo) GetUserByEmail(ctx context.Context, email string) (*models.User, error) {
+	return nil, nil
+}
+
+func (m *MockRepo) GetUserByID(ctx context.Context, userID string) (*models.User, error) {
+	return nil, nil
+}
+
 // MockStorage mocks the S3 storage interface
 type MockStorage struct {
 	GeneratePresignedPutURLFunc func(ctx context.Context, key string, contentType string) (string, error)

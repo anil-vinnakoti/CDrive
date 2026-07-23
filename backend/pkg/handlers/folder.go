@@ -86,9 +86,8 @@ func (h *FolderHandler) CreateFolder(ctx context.Context, request events.APIGate
 }
 
 // ListFolderContents handles GET requests to list files and subfolders.
-// Authenticates user token if provided to extract user ID.
+// Strictly requires a valid JWT Bearer token and filters items by authenticated user ID.
 func (h *FolderHandler) ListFolderContents(ctx context.Context, request events.APIGatewayV2HTTPRequest) (events.APIGatewayV2HTTPResponse, error) {
-	userID := request.QueryStringParameters["userId"]
 	folderID := request.QueryStringParameters["folderId"]
 	if folderID == "" {
 		if val, exists := request.PathParameters["folderId"]; exists {
@@ -96,13 +95,13 @@ func (h *FolderHandler) ListFolderContents(ctx context.Context, request events.A
 		}
 	}
 
+	var authenticatedUserID string
 	if h.authenticator != nil {
-		authenticatedUserID, err := h.authenticator.ExtractUserID(request)
-		if err == nil && authenticatedUserID != "" {
-			userID = authenticatedUserID
-		} else if userID == "" {
+		var err error
+		authenticatedUserID, err = h.authenticator.ExtractUserID(request)
+		if err != nil || authenticatedUserID == "" {
 			return jsonResponse(http.StatusUnauthorized, models.ErrorResponse{
-				Error: "Unauthorized access: missing or invalid authentication token",
+				Error: "Unauthorized access: valid Bearer authentication token is required",
 			})
 		}
 	}
@@ -110,8 +109,8 @@ func (h *FolderHandler) ListFolderContents(ctx context.Context, request events.A
 	var rawItems []models.DriveItem
 	var err error
 
-	if userID != "" && folderID == "" {
-		rawItems, err = h.repo.GetItemsByUserID(ctx, userID)
+	if folderID == "" || folderID == "ALL" {
+		rawItems, err = h.repo.GetItemsByUserID(ctx, authenticatedUserID)
 		if err != nil {
 			return jsonResponse(http.StatusInternalServerError, models.ErrorResponse{
 				Error:   "Failed to list user items",
@@ -119,15 +118,19 @@ func (h *FolderHandler) ListFolderContents(ctx context.Context, request events.A
 			})
 		}
 	} else {
-		if folderID == "" {
-			folderID = "ROOT"
-		}
-		rawItems, err = h.repo.GetItemsByFolderID(ctx, folderID)
+		allFolderItems, err := h.repo.GetItemsByFolderID(ctx, folderID)
 		if err != nil {
 			return jsonResponse(http.StatusInternalServerError, models.ErrorResponse{
 				Error:   "Failed to list folder contents",
 				Details: err.Error(),
 			})
+		}
+
+		// Strictly filter items owned by the authenticated user ID
+		for _, item := range allFolderItems {
+			if item.UserID == authenticatedUserID {
+				rawItems = append(rawItems, item)
+			}
 		}
 	}
 
@@ -146,7 +149,7 @@ func (h *FolderHandler) ListFolderContents(ctx context.Context, request events.A
 	}
 
 	resp := models.ListUserDriveResponse{
-		UserID:   userID,
+		UserID:   authenticatedUserID,
 		FolderID: folderID,
 		Count:    len(rawItems),
 		Files:    files,

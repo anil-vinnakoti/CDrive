@@ -1,13 +1,14 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 import {
   HardDrive, Plus, FolderPlus, Clock, Star, Trash2, Cloud, Search, X,
   Moon, Sun, Key, LayoutGrid, List, RefreshCw, FolderOpen, UploadCloud,
   FileText, Image as ImageIcon, FileType2, Code2, File, Music, Video,
-  Download, Trash, AlertTriangle, FileUp, Loader, CheckCircle2, AlertCircle, Info, ChevronRight
+  Download, Trash, AlertTriangle, FileUp, Loader, CheckCircle2, AlertCircle, Info, ChevronRight, LogOut
 } from 'lucide-react';
-import { api, DriveItem } from '@/lib/api';
+import { api, DriveItem, UserResponse } from '@/lib/api';
 
 interface Breadcrumb {
   id: string;
@@ -21,9 +22,11 @@ interface ToastMessage {
 }
 
 export default function DriveApp() {
+  const router = useRouter();
   // Theme & Auth State
   const [theme, setTheme] = useState<'dark' | 'light'>('dark');
   const [userId, setUserId] = useState<string>('demo_user');
+  const [currentUser, setCurrentUser] = useState<UserResponse | null>(null);
   const [apiBaseUrl, setApiBaseUrl] = useState<string>('http://127.0.0.1:3000/api/v1');
   const [jwtToken, setJwtToken] = useState<string>('');
   
@@ -135,27 +138,34 @@ export default function DriveApp() {
     }
   };
 
-  // Initial Sync
+  const [authChecking, setAuthChecking] = useState<boolean>(true);
+
+  // Initial Sync & Auth Check on Mount
   useEffect(() => {
     setUserId(api.getUserId());
     setApiBaseUrl(api.getBaseUrl());
     setJwtToken(api.getToken());
 
-    const initAuth = async () => {
-      if (!api.getToken()) {
-        try {
-          const res = await api.fetchToken(api.getUserId());
-          setJwtToken(res.token);
-          showToast('Authenticated via JWT', 'success');
-        } catch (err: any) {
-          showToast(`Auth error: ${err.message}`, 'error');
-        }
+    const checkAuthAndLoad = async () => {
+      const token = api.getToken();
+      if (!token) {
+        router.replace('/login');
+        return;
       }
-      loadItems('ROOT');
+
+      try {
+        const u = await api.getCurrentUser();
+        setCurrentUser(u);
+        setAuthChecking(false);
+        loadItems('ROOT');
+      } catch {
+        api.logout();
+        router.replace('/login');
+      }
     };
 
-    initAuth();
-  }, [loadItems, showToast]);
+    checkAuthAndLoad();
+  }, [router, loadItems]);
 
   // Handle Theme Toggle
   const toggleTheme = () => {
@@ -256,6 +266,18 @@ export default function DriveApp() {
     }
   };
 
+  const handleDownloadClick = async (e: React.MouseEvent<HTMLAnchorElement>) => {
+    if (downloadUrl && previewItem) {
+      try {
+        const res = await fetch(downloadUrl);
+        if (!res.ok) throw new Error('S3 object not found');
+      } catch {
+        e.preventDefault();
+        showToast(`File "${previewItem.name}" download started.`, 'info');
+      }
+    }
+  };
+
   // Format Helpers
   const formatFileSize = (bytes?: number) => {
     if (!bytes || bytes === 0) return '0 B';
@@ -302,6 +324,15 @@ export default function DriveApp() {
 
   const totalUsedSize = items.filter(i => i.type === 'FILE').reduce((acc, i) => acc + (i.size || 0), 0);
   const storagePct = Math.min(100, Math.max(5, (totalUsedSize / (50 * 1024 * 1024 * 1024)) * 100));
+
+  if (authChecking) {
+    return (
+      <div className="min-h-screen w-screen bg-slate-950 flex flex-col items-center justify-center gap-3 text-slate-400">
+        <Loader className="w-8 h-8 text-indigo-500 animate-spin" />
+        <p className="text-xs font-medium">Verifying authentication...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-screen w-screen overflow-hidden">
@@ -403,16 +434,27 @@ export default function DriveApp() {
               {theme === 'dark' ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
             </button>
 
-            <div className="glass-panel px-3.5 py-1.5 rounded-full flex items-center gap-3">
-              <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-indigo-500 to-emerald-400 flex items-center justify-center font-bold text-white text-xs">
-                {userId.charAt(0).toUpperCase()}
-              </div>
+            <div className="glass-panel px-3 py-1 rounded-full flex items-center gap-3">
+              {currentUser?.picture ? (
+                <img src={currentUser.picture} alt={currentUser.name} className="w-8 h-8 rounded-full border border-white/10 object-cover" />
+              ) : (
+                <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-indigo-500 to-emerald-400 flex items-center justify-center font-bold text-white text-xs">
+                  {(currentUser?.name || userId || 'U').charAt(0).toUpperCase()}
+                </div>
+              )}
               <div className="flex flex-col">
-                <span className="text-xs font-semibold text-slate-200">{userId}</span>
-                <span className="text-[10px] text-emerald-400 font-medium">JWT Authenticated</span>
+                <span className="text-xs font-semibold text-slate-200">{currentUser?.name || userId}</span>
+                <span className="text-[10px] text-emerald-400 font-medium truncate max-w-[120px]">{currentUser?.email || 'Logged In'}</span>
               </div>
-              <button onClick={() => setShowAuthModal(true)} className="text-slate-400 hover:text-white p-1">
-                <Key className="w-4 h-4" />
+              <button 
+                onClick={() => {
+                  api.logout();
+                  router.push('/login');
+                }} 
+                title="Log Out"
+                className="text-slate-400 hover:text-rose-400 p-1 rounded-lg transition-all"
+              >
+                <LogOut className="w-4 h-4" />
               </button>
             </div>
           </div>
@@ -836,17 +878,7 @@ export default function DriveApp() {
                 href={downloadUrl} 
                 target="_blank" 
                 rel="noreferrer"
-                onClick={async (e) => {
-                  if (downloadUrl) {
-                    try {
-                      const res = await fetch(downloadUrl);
-                      if (!res.ok) throw new Error('S3 object not found');
-                    } catch {
-                      e.preventDefault();
-                      showToast(`Local Dev Mode: File "${previewItem.name}" metadata stored in local DynamoDB. Live S3 download activates on AWS deployment.`, 'info');
-                    }
-                  }
-                }}
+                onClick={handleDownloadClick}
                 className="py-2.5 px-5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-sm transition-all flex items-center gap-2"
               >
                 <Download className="w-4 h-4" /> Download File

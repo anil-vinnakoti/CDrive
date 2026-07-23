@@ -101,7 +101,7 @@ func init() {
 	store := storage.NewS3Storage(s3Client, bucketName)
 	jwtAuth := auth.NewJWTAuth(jwtSecret)
 
-	authHandler = handlers.NewAuthHandler(jwtAuth)
+	authHandler = handlers.NewAuthHandler(repo, jwtAuth)
 	uploadHandler = handlers.NewUploadHandler(repo, store, jwtAuth)
 	downloadHandler = handlers.NewDownloadHandler(repo, store, jwtAuth)
 	folderHandler = handlers.NewFolderHandler(repo, jwtAuth)
@@ -129,11 +129,23 @@ func router(ctx context.Context, request events.APIGatewayV2HTTPRequest) (events
 			Headers: map[string]string{
 				"Access-Control-Allow-Origin":  "*",
 				"Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
-				"Access-Control-Allow-Headers": "Content-Type, Authorization",
+				"Access-Control-Allow-Headers": "*",
 			},
 		}, nil
 
-	case method == "POST" && (normalizedPath == "/auth/token" || normalizedPath == "/auth/login"):
+	case method == "POST" && normalizedPath == "/auth/signup":
+		return authHandler.HandleSignUp(ctx, request)
+
+	case method == "POST" && normalizedPath == "/auth/login":
+		return authHandler.HandleLogin(ctx, request)
+
+	case method == "POST" && normalizedPath == "/auth/google":
+		return authHandler.HandleGoogleAuth(ctx, request)
+
+	case method == "GET" && normalizedPath == "/auth/me":
+		return authHandler.HandleGetMe(ctx, request)
+
+	case method == "POST" && normalizedPath == "/auth/token":
 		return authHandler.HandleTokenGen(ctx, request)
 
 	case method == "POST" && (normalizedPath == "/files/upload-url" || normalizedPath == "/files/upload" || normalizedPath == "/upload"):

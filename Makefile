@@ -23,6 +23,15 @@ build-ui:
 	@echo "Building production Next.js bundle ..."
 	@cd frontend && export PATH=/opt/homebrew/bin:$$PATH && npm run build
 
+# Deploy AWS dev Backend Cloud Infrastructure
+deploy-backend-dev:
+	@cd backend && sam build && sam deploy --stack-name cdrive-backend-dev --parameter-overrides Stage=dev --capabilities CAPABILITY_IAM --region ap-south-1 --resolve-s3
+
+# Build & Sync Next.js UI Static Bundle to AWS S3 UI Hosting Bucket
+deploy-ui-dev: build-ui
+	@echo "Syncing Next.js UI build to AWS S3 UI Hosting Bucket..."
+	@aws s3 sync frontend/out s3://cdrive-ui-hosting-dev-590183698337 --delete --region ap-south-1
+
 # Clean build artifacts
 clean:
-	@rm -rf backend/.aws-sam backend/bin frontend/.next
+	@rm -rf backend/.aws-sam backend/bin frontend/.next frontend/out

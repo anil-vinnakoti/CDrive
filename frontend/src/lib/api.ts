@@ -51,6 +51,15 @@ export interface TokenResponse {
   userId: string;
 }
 
+export interface UserResponse {
+  id: string;
+  email: string;
+  name: string;
+  picture?: string;
+  authProvider: string;
+  token?: string;
+}
+
 export class CDriveClient {
   private baseUrl: string;
   private userId: string;
@@ -76,6 +85,52 @@ export class CDriveClient {
       localStorage.setItem('cdrive_api_url', baseUrl);
       localStorage.setItem('cdrive_user_id', userId);
       localStorage.setItem('cdrive_jwt_token', token);
+    }
+  }
+
+  public async signUp(email: string, password: string, name?: string): Promise<UserResponse> {
+    const res = await this.request<UserResponse>('/auth/signup', {
+      method: 'POST',
+      body: JSON.stringify({ email, password, name }),
+    });
+    if (res.token) {
+      this.setConfig(this.baseUrl, res.id, res.token);
+    }
+    return res;
+  }
+
+  public async login(email: string, password: string): Promise<UserResponse> {
+    const res = await this.request<UserResponse>('/auth/login', {
+      method: 'POST',
+      body: JSON.stringify({ email, password }),
+    });
+    if (res.token) {
+      this.setConfig(this.baseUrl, res.id, res.token);
+    }
+    return res;
+  }
+
+  public async loginWithGoogle(idToken: string): Promise<UserResponse> {
+    const res = await this.request<UserResponse>('/auth/google', {
+      method: 'POST',
+      body: JSON.stringify({ idToken }),
+    });
+    if (res.token) {
+      this.setConfig(this.baseUrl, res.id, res.token);
+    }
+    return res;
+  }
+
+  public async getCurrentUser(): Promise<UserResponse> {
+    return this.request<UserResponse>('/auth/me');
+  }
+
+  public logout() {
+    this.token = '';
+    this.userId = '';
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('cdrive_jwt_token');
+      localStorage.removeItem('cdrive_user_id');
     }
   }
 

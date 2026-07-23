@@ -7,23 +7,29 @@ import (
 	"net/http"
 	"testing"
 
+	"cdrive-backend/pkg/auth"
 	"cdrive-backend/pkg/models"
 
 	"github.com/aws/aws-lambda-go/events"
 )
 
 func TestListFolderContents_Success(t *testing.T) {
+	jwtAuth := auth.NewJWTAuth("test-secret")
+	tokenStr, _ := jwtAuth.GenerateToken("user_123")
+
 	mockRepo := &MockRepo{
 		GetItemsByFolderIDFunc: func(ctx context.Context, folderID string) ([]models.DriveItem, error) {
 			return []models.DriveItem{
 				{
 					ID:       "item_1",
+					UserID:   "user_123",
 					Name:     "test_file.txt",
 					Type:     "FILE",
 					FolderID: folderID,
 				},
 				{
 					ID:       "folder_1",
+					UserID:   "user_123",
 					Name:     "Docs",
 					Type:     "FOLDER",
 					FolderID: folderID,
@@ -32,9 +38,12 @@ func TestListFolderContents_Success(t *testing.T) {
 		},
 	}
 
-	handler := NewFolderHandler(mockRepo, nil)
+	handler := NewFolderHandler(mockRepo, jwtAuth)
 
 	request := events.APIGatewayV2HTTPRequest{
+		Headers: map[string]string{
+			"authorization": "Bearer " + tokenStr,
+		},
 		QueryStringParameters: map[string]string{
 			"folderId": "ROOT",
 		},
@@ -68,23 +77,29 @@ func TestListFolderContents_Success(t *testing.T) {
 }
 
 func TestListFolderContents_AllUserItems(t *testing.T) {
+	jwtAuth := auth.NewJWTAuth("test-secret")
+	tokenStr, _ := jwtAuth.GenerateToken("user_123")
+
 	mockRepo := &MockRepo{
 		GetItemsByUserIDFunc: func(ctx context.Context, userID string) ([]models.DriveItem, error) {
 			if userID != "user_123" {
 				t.Errorf("expected userId 'user_123', got '%s'", userID)
 			}
 			return []models.DriveItem{
-				{ID: "f1", Name: "File 1", Type: "FILE"},
-				{ID: "f2", Name: "Folder 1", Type: "FOLDER"},
+				{ID: "f1", UserID: "user_123", Name: "File 1", Type: "FILE"},
+				{ID: "f2", UserID: "user_123", Name: "Folder 1", Type: "FOLDER"},
 			}, nil
 		},
 	}
 
-	handler := NewFolderHandler(mockRepo, nil)
+	handler := NewFolderHandler(mockRepo, jwtAuth)
 
 	request := events.APIGatewayV2HTTPRequest{
+		Headers: map[string]string{
+			"authorization": "Bearer " + tokenStr,
+		},
 		QueryStringParameters: map[string]string{
-			"userId": "user_123",
+			"folderId": "ALL",
 		},
 	}
 
@@ -108,6 +123,9 @@ func TestListFolderContents_AllUserItems(t *testing.T) {
 }
 
 func TestListFolderContents_DefaultRoot(t *testing.T) {
+	jwtAuth := auth.NewJWTAuth("test-secret")
+	tokenStr, _ := jwtAuth.GenerateToken("user_123")
+
 	mockRepo := &MockRepo{
 		GetItemsByFolderIDFunc: func(ctx context.Context, folderID string) ([]models.DriveItem, error) {
 			if folderID != "ROOT" {
@@ -117,9 +135,13 @@ func TestListFolderContents_DefaultRoot(t *testing.T) {
 		},
 	}
 
-	handler := NewFolderHandler(mockRepo, nil)
+	handler := NewFolderHandler(mockRepo, jwtAuth)
 
-	request := events.APIGatewayV2HTTPRequest{}
+	request := events.APIGatewayV2HTTPRequest{
+		Headers: map[string]string{
+			"authorization": "Bearer " + tokenStr,
+		},
+	}
 
 	response, err := handler.ListFolderContents(context.Background(), request)
 	if err != nil {
@@ -132,15 +154,21 @@ func TestListFolderContents_DefaultRoot(t *testing.T) {
 }
 
 func TestListFolderContents_RepositoryError(t *testing.T) {
+	jwtAuth := auth.NewJWTAuth("test-secret")
+	tokenStr, _ := jwtAuth.GenerateToken("user_123")
+
 	mockRepo := &MockRepo{
 		GetItemsByFolderIDFunc: func(ctx context.Context, folderID string) ([]models.DriveItem, error) {
 			return nil, errors.New("dynamo query error")
 		},
 	}
 
-	handler := NewFolderHandler(mockRepo, nil)
+	handler := NewFolderHandler(mockRepo, jwtAuth)
 
 	request := events.APIGatewayV2HTTPRequest{
+		Headers: map[string]string{
+			"authorization": "Bearer " + tokenStr,
+		},
 		QueryStringParameters: map[string]string{"folderId": "ROOT"},
 	}
 

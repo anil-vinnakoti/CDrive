@@ -85,7 +85,68 @@ Resources:
             MaxAge: 3000
 
   # ==========================================================
-  # 3. HTTP API Gateway (v2)
+  # 3. S3 Bucket for UI Hosting
+  # ==========================================================
+  CDriveUiBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub "cdrive-ui-hosting-${Stage}-${AWS::AccountId}"
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: false
+        BlockPublicPolicy: false
+        IgnorePublicAcls: false
+        RestrictPublicBuckets: false
+      WebsiteConfiguration:
+        IndexDocument: index.html
+        ErrorDocument: 404.html
+
+  CDriveUiBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref CDriveUiBucket
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: PublicReadGetObject
+            Effect: Allow
+            Principal: '*'
+            Action: 's3:GetObject'
+            Resource: !Sub "arn:aws:s3:::${CDriveUiBucket}/*"
+
+  # ==========================================================
+  # 4. CloudFront Distribution for UI CDN
+  # ==========================================================
+  CDriveUiCloudFront:
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        Enabled: true
+        Comment: !Sub "CDrive Web UI CDN (${Stage})"
+        DefaultRootObject: index.html
+        Origins:
+          - Id: S3Origin
+            DomainName: !GetAtt CDriveUiBucket.RegionalDomainName
+            CustomOriginConfig:
+              HTTPPort: 80
+              HTTPSPort: 443
+              OriginProtocolPolicy: http-only
+        DefaultCacheBehavior:
+          TargetOriginId: S3Origin
+          ViewerProtocolPolicy: redirect-to-https
+          AllowedMethods:
+            - GET
+            - HEAD
+            - OPTIONS
+          CachedMethods:
+            - GET
+            - HEAD
+          ForwardedValues:
+            QueryString: false
+            Cookies:
+              Forward: none
+
+  # ==========================================================
+  # 5. HTTP API Gateway (v2)
   # ==========================================================
   HttpApi:
     Type: AWS::Serverless::HttpApi
@@ -93,22 +154,14 @@ Resources:
       Name: !Sub "CDriveHttpApi-${Stage}"
       CorsConfiguration:
         AllowHeaders:
-          - Content-Type
-          - Authorization
-          - X-Amz-Date
-          - X-Api-Key
-          - X-Amz-Security-Token
+          - '*'
         AllowMethods:
-          - GET
-          - POST
-          - PUT
-          - DELETE
-          - OPTIONS
+          - '*'
         AllowOrigins:
           - '*'
 
   # ==========================================================
-  # 4. Go Lambda Function
+  # 6. Go Lambda Function
   # ==========================================================
   CDriveApiFunction:
     Type: AWS::Serverless::Function
@@ -153,6 +206,15 @@ Outputs:
   S3BucketName:
     Description: S3 Storage Bucket Name
     Value: !Ref CDriveFileStorage
+  UiHostingBucketName:
+    Description: S3 Bucket Name for UI Hosting
+    Value: !Ref CDriveUiBucket
+  UiWebsiteUrl:
+    Description: S3 Static Website URL for UI
+    Value: !GetAtt CDriveUiBucket.WebsiteURL
+  UiCloudFrontUrl:
+    Description: CloudFront CDN HTTPS URL for CDrive UI
+    Value: !Sub "https://${CDriveUiCloudFront.DomainName}"
   CDriveFunctionArn:
     Description: CDrive API Lambda Function ARN
     Value: !GetAtt CDriveApiFunction.Arn

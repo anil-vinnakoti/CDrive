@@ -21,6 +21,9 @@ type Repository interface {
 	UpdateFavoriteStatus(ctx context.Context, pk string, sk string, isFavorite bool) error
 	UpdateTrashStatus(ctx context.Context, pk string, sk string, isTrashed bool) error
 	DeleteItem(ctx context.Context, pk string, sk string) error
+	CreateUser(ctx context.Context, user *models.User) error
+	GetUserByEmail(ctx context.Context, email string) (*models.User, error)
+	GetUserByID(ctx context.Context, userID string) (*models.User, error)
 }
 
 type DynamoRepository struct {
@@ -188,4 +191,76 @@ func (r *DynamoRepository) DeleteItem(ctx context.Context, pk string, sk string)
 		return fmt.Errorf("failed to delete item from DynamoDB: %w", err)
 	}
 	return nil
+}
+
+// CreateUser saves a User entity to DynamoDB (PK: USER#<UserID>, SK: METADATA#<UserID>)
+func (r *DynamoRepository) CreateUser(ctx context.Context, user *models.User) error {
+	user.PK = "USER#" + user.ID
+	user.SK = "METADATA#" + user.ID
+
+	av, err := attributevalue.MarshalMap(user)
+	if err != nil {
+		return fmt.Errorf("failed to marshal user: %w", err)
+	}
+
+	_, err = r.client.PutItem(ctx, &dynamodb.PutItemInput{
+		TableName: aws.String(r.tableName),
+		Item:      av,
+	})
+	if err != nil {
+		return fmt.Errorf("failed to create user in DynamoDB: %w", err)
+	}
+	return nil
+}
+
+// GetUserByID retrieves a User profile by UserID
+func (r *DynamoRepository) GetUserByID(ctx context.Context, userID string) (*models.User, error) {
+	pk := "USER#" + userID
+	sk := "METADATA#" + userID
+
+	result, err := r.client.GetItem(ctx, &dynamodb.GetItemInput{
+		TableName: aws.String(r.tableName),
+		Key: map[string]types.AttributeValue{
+			"PK": &types.AttributeValueMemberS{Value: pk},
+			"SK": &types.AttributeValueMemberS{Value: sk},
+		},
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to get user: %w", err)
+	}
+	if result.Item == nil {
+		return nil, nil
+	}
+
+	var user models.User
+	if err := attributevalue.UnmarshalMap(result.Item, &user); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal user: %w", err)
+	}
+	return &user, nil
+}
+
+// GetUserByEmail queries a user record by Email attribute
+func (r *DynamoRepository) GetUserByEmail(ctx context.Context, email string) (*models.User, error) {
+	input := &dynamodb.ScanInput{
+		TableName:        aws.String(r.tableName),
+		FilterExpression: aws.String("Email = :email"),
+		ExpressionAttributeValues: map[string]types.AttributeValue{
+			":email": &types.AttributeValueMemberS{Value: email},
+		},
+	}
+
+	result, err := r.client.Scan(ctx, input)
+	if err != nil {
+		return nil, fmt.Errorf("failed to scan for user by email: %w", err)
+	}
+
+	if len(result.Items) == 0 {
+		return nil, nil
+	}
+
+	var user models.User
+	if err := attributevalue.UnmarshalMap(result.Items[0], &user); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal user by email: %w", err)
+	}
+	return &user, nil
 }

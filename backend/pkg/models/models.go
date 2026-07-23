@@ -21,6 +21,48 @@ type DriveItem struct {
 	UpdatedAt time.Time  `dynamodbav:"UpdatedAt" json:"updatedAt"`
 }
 
+// User represents a user account record stored in DynamoDB (PK: USER#<UserID>, SK: METADATA#<UserID>)
+type User struct {
+	PK           string    `dynamodbav:"PK" json:"pk"`
+	SK           string    `dynamodbav:"SK" json:"sk"`
+	ID           string    `dynamodbav:"ID" json:"id"`
+	Email        string    `dynamodbav:"Email" json:"email"`
+	Name         string    `dynamodbav:"Name" json:"name"`
+	Picture      string    `dynamodbav:"Picture,omitempty" json:"picture,omitempty"`
+	PasswordHash string    `dynamodbav:"PasswordHash,omitempty" json:"-"`
+	AuthProvider string    `dynamodbav:"AuthProvider" json:"authProvider"` // "local" or "google"
+	CreatedAt    time.Time `dynamodbav:"CreatedAt" json:"createdAt"`
+	UpdatedAt    time.Time `dynamodbav:"UpdatedAt" json:"updatedAt"`
+}
+
+// SignUpRequest represents payload for email/password registration
+type SignUpRequest struct {
+	Email    string `json:"email"`
+	Password string `json:"password"`
+	Name     string `json:"name"`
+}
+
+// AuthLoginRequest represents payload for email/password login
+type AuthLoginRequest struct {
+	Email    string `json:"email"`
+	Password string `json:"password"`
+}
+
+// GoogleAuthRequest represents payload for Google OAuth 2.0 token verification
+type GoogleAuthRequest struct {
+	IdToken string `json:"idToken"`
+}
+
+// UserResponse represents payload returned to client after successful authentication
+type UserResponse struct {
+	ID           string `json:"id"`
+	Email        string `json:"email"`
+	Name         string `json:"name"`
+	Picture      string `json:"picture,omitempty"`
+	AuthProvider string `json:"authProvider"`
+	Token        string `json:"token"`
+}
+
 // FavoriteItemRequest represents the request to star/unstar an item
 type FavoriteItemRequest struct {
 	UserID     string `json:"userId"`

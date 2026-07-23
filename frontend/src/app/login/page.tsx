@@ -21,7 +21,7 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (api.getToken()) {
-      router.replace('/');
+      router.replace('/drive');
       return;
     }
 
@@ -92,7 +92,7 @@ export default function LoginPage() {
     try {
       if (response.credential) {
         await api.loginWithGoogle(response.credential);
-        router.push('/');
+        router.push('/drive');
       }
     } catch (err: any) {
       setError(err.message || 'Google authentication failed');

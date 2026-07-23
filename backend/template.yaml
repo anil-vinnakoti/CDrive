@@ -85,11 +85,11 @@ Resources:
             MaxAge: 3000
       LifecycleConfiguration:
         Rules:
-          - Id: TransitionToGlacierInstantRetrieval30Days
+          - Id: AutoTransitionToIntelligentTiering
             Status: Enabled
             Transitions:
-              - TransitionInDays: 30
-                StorageClass: GLACIER_IR
+              - TransitionInDays: 0
+                StorageClass: INTELLIGENT_TIERING
 
   # ==========================================================
   # 3. S3 Bucket for UI Hosting

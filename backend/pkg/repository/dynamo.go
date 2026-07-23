@@ -173,9 +173,10 @@ func (r *DynamoRepository) UpdateTrashStatus(ctx context.Context, pk string, sk 
 	if isTrashed {
 		now := time.Now()
 		ttlSeconds := now.Add(25 * 24 * time.Hour).Unix()
-		updateExpression = "SET IsTrashed = :trashed, TrashedAt = :trashedAt, #ttl = :ttl"
+		updateExpression = "SET IsTrashed = :trashed, IsFavorite = :fav, TrashedAt = :trashedAt, #ttl = :ttl"
 		exprValues = map[string]types.AttributeValue{
 			":trashed":   &types.AttributeValueMemberBOOL{Value: true},
+			":fav":       &types.AttributeValueMemberBOOL{Value: false},
 			":trashedAt": &types.AttributeValueMemberS{Value: now.Format(time.RFC3339)},
 			":ttl":       &types.AttributeValueMemberN{Value: fmt.Sprintf("%d", ttlSeconds)},
 		}

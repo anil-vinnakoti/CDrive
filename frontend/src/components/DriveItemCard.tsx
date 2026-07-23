@@ -73,13 +73,15 @@ export const DriveItemCard = React.memo(function DriveItemCard({
                 <Edit3 className="w-4 h-4" />
               </button>
             )}
-            <button
-              onClick={(e) => onToggleFavorite(item, e)}
-              title={item.isFavorite ? "Remove from Favorites" : "Add to Favorites"}
-              className={`p-1.5 rounded-lg transition-colors cursor-pointer ${item.isFavorite ? 'text-zinc-900 dark:text-zinc-100 opacity-100' : 'text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200 opacity-0 group-hover:opacity-100'}`}
-            >
-              <Star className={`w-4 h-4 ${item.isFavorite ? 'fill-zinc-900 dark:fill-zinc-100' : ''}`} />
-            </button>
+            {activeTab !== 'trash' && !item.isTrashed && (
+              <button
+                onClick={(e) => onToggleFavorite(item, e)}
+                title={item.isFavorite ? "Remove from Favorites" : "Add to Favorites"}
+                className={`p-1.5 rounded-lg transition-colors cursor-pointer ${item.isFavorite ? 'text-zinc-900 dark:text-zinc-100 opacity-100' : 'text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200 opacity-0 group-hover:opacity-100'}`}
+              >
+                <Star className={`w-4 h-4 ${item.isFavorite ? 'fill-zinc-900 dark:fill-zinc-100' : ''}`} />
+              </button>
+            )}
             {activeTab === 'trash' ? (
               <>
                 <button onClick={(e) => onToggleTrash(item, false, e)} title="Restore from Trash" className="p-1.5 text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200 opacity-0 group-hover:opacity-100 cursor-pointer"><RefreshCw className="w-4 h-4" /></button>
@@ -106,13 +108,15 @@ export const DriveItemCard = React.memo(function DriveItemCard({
                   <Edit3 className="w-4 h-4" />
                 </button>
               )}
-              <button
-                onClick={(e) => onToggleFavorite(item, e)}
-                title={item.isFavorite ? "Remove from Favorites" : "Add to Favorites"}
-                className={`p-1.5 rounded-lg transition-colors cursor-pointer ${item.isFavorite ? 'text-zinc-900 dark:text-zinc-100 opacity-100' : 'text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200 opacity-0 group-hover:opacity-100'}`}
-              >
-                <Star className={`w-4 h-4 ${item.isFavorite ? 'fill-zinc-900 dark:fill-zinc-100' : ''}`} />
-              </button>
+              {activeTab !== 'trash' && !item.isTrashed && (
+                <button
+                  onClick={(e) => onToggleFavorite(item, e)}
+                  title={item.isFavorite ? "Remove from Favorites" : "Add to Favorites"}
+                  className={`p-1.5 rounded-lg transition-colors cursor-pointer ${item.isFavorite ? 'text-zinc-900 dark:text-zinc-100 opacity-100' : 'text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200 opacity-0 group-hover:opacity-100'}`}
+                >
+                  <Star className={`w-4 h-4 ${item.isFavorite ? 'fill-zinc-900 dark:fill-zinc-100' : ''}`} />
+                </button>
+              )}
               {activeTab === 'trash' ? (
                 <>
                   <button onClick={(e) => onToggleTrash(item, false, e)} title="Restore from Trash" className="p-1.5 text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200 opacity-0 group-hover:opacity-100 cursor-pointer"><RefreshCw className="w-4 h-4" /></button>

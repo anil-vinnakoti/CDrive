@@ -57,6 +57,15 @@ func (h *FavoriteHandler) HandleFavorite(ctx context.Context, request events.API
 	pk := "USER#" + req.UserID
 	sk := prefix + req.ItemID
 
+	if req.IsFavorite {
+		existingItem, err := h.repo.GetItem(ctx, pk, sk)
+		if err == nil && existingItem != nil && existingItem.IsTrashed {
+			return jsonResponse(http.StatusBadRequest, models.ErrorResponse{
+				Error: "Trashed items cannot be added to favorites",
+			})
+		}
+	}
+
 	err := h.repo.UpdateFavoriteStatus(ctx, pk, sk, req.IsFavorite)
 	if err != nil {
 		return jsonResponse(http.StatusInternalServerError, models.ErrorResponse{

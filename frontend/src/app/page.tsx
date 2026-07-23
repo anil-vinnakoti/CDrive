@@ -1,12 +1,12 @@
 'use client';
 
-import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import {
   HardDrive, Plus, FolderPlus, Clock, Star, Trash2, Cloud, Search, X,
-  Moon, Sun, Key, LayoutGrid, List, RefreshCw, FolderOpen, ChevronRight,
-  Loader, CheckCircle2, AlertCircle, Info, LogOut
+  Moon, Sun, LayoutGrid, List, RefreshCw, FolderOpen, ChevronRight,
+  Loader, CheckCircle2, AlertCircle, Info, LogOut, ArrowUpDown, ArrowUp, ArrowDown
 } from 'lucide-react';
 
 import { api, DriveItem, UserResponse } from '@/lib/api';
@@ -20,6 +20,7 @@ const PreviewModal = dynamic(() => import('@/components/modals/PreviewModal').th
 const ShareModal = dynamic(() => import('@/components/modals/ShareModal').then(m => m.ShareModal), { ssr: false });
 const ConfirmDeleteModal = dynamic(() => import('@/components/modals/ConfirmDeleteModal').then(m => m.ConfirmDeleteModal), { ssr: false });
 const EmptyTrashModal = dynamic(() => import('@/components/modals/ConfirmDeleteModal').then(m => m.EmptyTrashModal), { ssr: false });
+const RenameModal = dynamic(() => import('@/components/modals/RenameModal').then(m => m.RenameModal), { ssr: false });
 
 export default function DrivePage() {
   const router = useRouter();
@@ -40,16 +41,20 @@ export default function DrivePage() {
   const [searchQuery, setSearchQuery] = useState<string>('');
   const debouncedSearchQuery = useDebounce(searchQuery, 200);
 
+  // Google Drive Style Sorting State
+  const [sortBy, setSortBy] = useState<'name' | 'date' | 'size'>('name');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+
   const [theme, setTheme] = useState<'dark' | 'light'>('dark');
 
   // Modals & Forms State
-  const [showAuthModal, setShowAuthModal] = useState<boolean>(false);
   const [showFolderModal, setShowFolderModal] = useState<boolean>(false);
   const [showUploadModal, setShowUploadModal] = useState<boolean>(false);
   const [showPreviewModal, setShowPreviewModal] = useState<boolean>(false);
   const [showShareModal, setShowShareModal] = useState<boolean>(false);
   const [showDeleteModal, setShowDeleteModal] = useState<boolean>(false);
   const [showEmptyTrashModal, setShowEmptyTrashModal] = useState<boolean>(false);
+  const [showRenameModal, setShowRenameModal] = useState<boolean>(false);
 
   const [newFolderName, setNewFolderName] = useState<string>('');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -62,11 +67,10 @@ export default function DrivePage() {
   const [downloadUrl, setDownloadUrl] = useState<string>('');
   const [shareUrl, setShareUrl] = useState<string>('');
   const [pendingDeleteItem, setPendingDeleteItem] = useState<DriveItem | null>(null);
+  const [renameTargetItem, setRenameTargetItem] = useState<DriveItem | null>(null);
 
   // Settings State
-  const [apiBaseUrl, setApiBaseUrl] = useState<string>('');
   const [userId, setUserId] = useState<string>('');
-  const [jwtToken, setJwtToken] = useState<string>('');
 
   // Thumbnails Cache
   const [thumbnails, setThumbnails] = useState<Record<string, string>>({});
@@ -84,9 +88,7 @@ export default function DrivePage() {
 
   // Sync API Client Configuration
   useEffect(() => {
-    setApiBaseUrl(api.getBaseUrl());
     setUserId(api.getUserId());
-    setJwtToken(api.getToken());
   }, []);
 
   // Fetch Items for Current View
@@ -311,6 +313,26 @@ export default function DrivePage() {
     }
   }, [currentFolderId, loadItems, showToast]);
 
+  // Open Rename Modal
+  const handleOpenRename = useCallback((item: DriveItem, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setRenameTargetItem(item);
+    setShowRenameModal(true);
+  }, []);
+
+  // Rename Item Confirm
+  const handleRenameConfirm = async (item: DriveItem, newName: string) => {
+    try {
+      await api.renameItem(item.id, item.type, newName);
+      setShowRenameModal(false);
+      setRenameTargetItem(null);
+      showToast(`Renamed to "${newName}"`, 'success');
+      loadItems(currentFolderId);
+    } catch (err: any) {
+      showToast(`Rename failed: ${err.message}`, 'error');
+    }
+  };
+
   const handlePermanentDeleteClick = useCallback((item: DriveItem, e: React.MouseEvent) => {
     e.stopPropagation();
     setPendingDeleteItem(item);
@@ -355,10 +377,12 @@ export default function DrivePage() {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
   }, []);
 
-  // Filter Items by Search Query and Active Tab (Memoized)
+  // Filter & Google Drive Style Sort Items (Memoized)
   const filteredItems = useMemo(() => {
     const query = debouncedSearchQuery.toLowerCase();
-    return items.filter(item => {
+
+    // 1. Filter by Search & Active Navigation Tab
+    const matching = items.filter(item => {
       const matchesSearch = item.name.toLowerCase().includes(query);
       if (!matchesSearch) return false;
 
@@ -375,7 +399,30 @@ export default function DrivePage() {
       if (item.isTrashed) return false;
       return true;
     });
-  }, [items, debouncedSearchQuery, activeTab]);
+
+    // 2. Google Drive Style Sorting Comparator: FOLDERS ALWAYS FIRST
+    return [...matching].sort((a, b) => {
+      // Rule 1: Folders always placed before Files
+      if (a.type === 'FOLDER' && b.type !== 'FOLDER') return -1;
+      if (a.type !== 'FOLDER' && b.type === 'FOLDER') return 1;
+
+      // Rule 2: Sort within same type group by selected criteria
+      let cmp = 0;
+      if (sortBy === 'name') {
+        cmp = a.name.localeCompare(b.name, undefined, { sensitivity: 'base', numeric: true });
+      } else if (sortBy === 'date') {
+        const dateA = new Date(a.updatedAt || a.createdAt).getTime();
+        const dateB = new Date(b.updatedAt || b.createdAt).getTime();
+        cmp = dateA - dateB;
+      } else if (sortBy === 'size') {
+        const sizeA = a.size || 0;
+        const sizeB = b.size || 0;
+        cmp = sizeA - sizeB;
+      }
+
+      return sortOrder === 'asc' ? cmp : -cmp;
+    });
+  }, [items, debouncedSearchQuery, activeTab, sortBy, sortOrder]);
 
   const totalUsedSize = useMemo(() => {
     return items.filter(i => i.type === 'FILE').reduce((acc, i) => acc + (i.size || 0), 0);
@@ -560,6 +607,31 @@ export default function DrivePage() {
                 <span>Empty Trash</span>
               </button>
             )}
+
+            {/* Google Drive Style Sort Dropdown & Toggle */}
+            <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-1 rounded-lg flex items-center gap-1">
+              <div className="flex items-center gap-1 px-2 py-1 text-xs text-zinc-600 dark:text-zinc-400 font-medium border-r border-zinc-200 dark:border-zinc-800">
+                <ArrowUpDown className="w-3.5 h-3.5 text-zinc-500 dark:text-zinc-400" />
+                <select
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value as 'name' | 'date' | 'size')}
+                  title="Sort items by attribute (Folders always kept at top)"
+                  className="bg-transparent border-none outline-none cursor-pointer text-zinc-800 dark:text-zinc-200 font-medium"
+                >
+                  <option value="name" className="bg-white dark:bg-zinc-900">Name (A-Z)</option>
+                  <option value="date" className="bg-white dark:bg-zinc-900">Last Modified</option>
+                  <option value="size" className="bg-white dark:bg-zinc-900">File Size</option>
+                </select>
+              </div>
+              <button
+                onClick={() => setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc')}
+                title={sortOrder === 'asc' ? "Sort Ascending (Click to reverse)" : "Sort Descending (Click to reverse)"}
+                className="p-1 rounded text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors cursor-pointer"
+              >
+                {sortOrder === 'asc' ? <ArrowUp className="w-3.5 h-3.5" /> : <ArrowDown className="w-3.5 h-3.5" />}
+              </button>
+            </div>
+
             <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-1 rounded-lg flex gap-1">
               <button onClick={() => setViewMode('grid')} title="Switch to Grid View" className={`p-1.5 rounded transition-colors cursor-pointer ${viewMode === 'grid' ? 'bg-zinc-200 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100' : 'text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200'}`}>
                 <LayoutGrid className="w-4 h-4" />
@@ -614,6 +686,7 @@ export default function DrivePage() {
                   onToggleFavorite={handleToggleFavorite}
                   onToggleTrash={handleToggleTrash}
                   onPermanentDelete={handlePermanentDeleteClick}
+                  onRename={handleOpenRename}
                   formatFileSize={formatFileSize}
                 />
               ))}
@@ -674,6 +747,13 @@ export default function DrivePage() {
         show={showEmptyTrashModal}
         onClose={() => setShowEmptyTrashModal(false)}
         onConfirm={handleEmptyTrash}
+      />
+
+      <RenameModal
+        show={showRenameModal}
+        item={renameTargetItem}
+        onClose={() => setShowRenameModal(false)}
+        onRename={handleRenameConfirm}
       />
 
       {/* Minimalist Toasts Container */}

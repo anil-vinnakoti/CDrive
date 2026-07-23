@@ -80,6 +80,14 @@ type TrashItemRequest struct {
 	IsTrashed bool   `json:"isTrashed"`
 }
 
+// RenameItemRequest represents the request to update a file or folder name
+type RenameItemRequest struct {
+	UserID  string `json:"userId"`
+	ItemID  string `json:"itemId"`
+	Type    string `json:"type"` // "FILE" or "FOLDER"
+	NewName string `json:"newName"`
+}
+
 // ShareItemRequest represents the payload to create a shareable expiring link
 type ShareItemRequest struct {
 	UserID           string `json:"userId"`

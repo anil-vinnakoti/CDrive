@@ -2,7 +2,7 @@
 
 import React from 'react';
 import {
-  FolderOpen, Star, RefreshCw, Trash2, FileText, Image as ImageIcon,
+  FolderOpen, Star, RefreshCw, Trash2, Edit3, FileText, Image as ImageIcon,
   Music, Video, Code2, File, FileType2
 } from 'lucide-react';
 import { DriveItem } from '@/lib/api';
@@ -16,6 +16,7 @@ interface DriveItemCardProps {
   onToggleFavorite: (item: DriveItem, e: React.MouseEvent) => void;
   onToggleTrash: (item: DriveItem, isTrashAction: boolean, e: React.MouseEvent) => void;
   onPermanentDelete: (item: DriveItem, e: React.MouseEvent) => void;
+  onRename?: (item: DriveItem, e: React.MouseEvent) => void;
   formatFileSize: (bytes?: number) => string;
 }
 
@@ -43,6 +44,7 @@ export const DriveItemCard = React.memo(function DriveItemCard({
   onToggleFavorite,
   onToggleTrash,
   onPermanentDelete,
+  onRename,
   formatFileSize
 }: DriveItemCardProps) {
   const mime = (item.mimeType || '').toLowerCase();
@@ -62,6 +64,15 @@ export const DriveItemCard = React.memo(function DriveItemCard({
             <FolderOpen className="w-5 h-5 text-zinc-800 dark:text-zinc-100" />
           </div>
           <div className="flex items-center gap-1">
+            {onRename && activeTab !== 'trash' && (
+              <button
+                onClick={(e) => onRename(item, e)}
+                title="Rename item"
+                className="p-1.5 text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200 opacity-0 group-hover:opacity-100 cursor-pointer transition-colors"
+              >
+                <Edit3 className="w-4 h-4" />
+              </button>
+            )}
             <button
               onClick={(e) => onToggleFavorite(item, e)}
               title={item.isFavorite ? "Remove from Favorites" : "Add to Favorites"}
@@ -86,6 +97,15 @@ export const DriveItemCard = React.memo(function DriveItemCard({
               {ext || 'FILE'}
             </div>
             <div className="flex items-center gap-1">
+              {onRename && activeTab !== 'trash' && (
+                <button
+                  onClick={(e) => onRename(item, e)}
+                  title="Rename item"
+                  className="p-1.5 text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200 opacity-0 group-hover:opacity-100 cursor-pointer transition-colors"
+                >
+                  <Edit3 className="w-4 h-4" />
+                </button>
+              )}
               <button
                 onClick={(e) => onToggleFavorite(item, e)}
                 title={item.isFavorite ? "Remove from Favorites" : "Add to Favorites"}

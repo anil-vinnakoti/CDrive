@@ -278,6 +278,18 @@ export class CDriveClient {
       })
     });
   }
+
+  public async renameItem(itemId: string, type: 'FILE' | 'FOLDER', newName: string): Promise<{ message: string; name: string }> {
+    return this.request<{ message: string; name: string }>('/items/rename', {
+      method: 'POST',
+      body: JSON.stringify({
+        userId: this.userId,
+        itemId: itemId,
+        type: type,
+        newName: newName
+      })
+    });
+  }
 }
 
 export const api = new CDriveClient();

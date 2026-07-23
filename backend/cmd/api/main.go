@@ -29,6 +29,7 @@ var (
 	favoriteHandler *handlers.FavoriteHandler
 	trashHandler    *handlers.TrashHandler
 	shareHandler    *handlers.ShareHandler
+	renameHandler   *handlers.RenameHandler
 	logger          *slog.Logger
 )
 
@@ -106,6 +107,7 @@ func init() {
 	favoriteHandler = handlers.NewFavoriteHandler(repo, jwtAuth)
 	trashHandler = handlers.NewTrashHandler(repo, jwtAuth)
 	shareHandler = handlers.NewShareHandler(repo, store, jwtAuth)
+	renameHandler = handlers.NewRenameHandler(repo, jwtAuth)
 }
 
 func router(ctx context.Context, request events.APIGatewayV2HTTPRequest) (events.APIGatewayV2HTTPResponse, error) {
@@ -165,6 +167,9 @@ func router(ctx context.Context, request events.APIGatewayV2HTTPRequest) (events
 
 	case method == "POST" && (normalizedPath == "/files/share" || normalizedPath == "/share"):
 		return shareHandler.HandleCreateShare(ctx, request)
+
+	case method == "POST" && (normalizedPath == "/items/rename" || normalizedPath == "/rename"):
+		return renameHandler.HandleRename(ctx, request)
 
 	case (method == "DELETE" || method == "POST") && (normalizedPath == "/delete" || normalizedPath == "/items/delete" || normalizedPath == "/files/delete" || normalizedPath == "/folders/delete"):
 		return deleteHandler.HandleDelete(ctx, request)

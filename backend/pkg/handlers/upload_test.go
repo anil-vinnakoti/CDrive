@@ -21,6 +21,7 @@ type MockRepo struct {
 	GetItemsByFolderIDFunc   func(ctx context.Context, folderID string) ([]models.DriveItem, error)
 	UpdateFavoriteStatusFunc func(ctx context.Context, pk, sk string, isFavorite bool) error
 	UpdateTrashStatusFunc    func(ctx context.Context, pk, sk string, isTrashed bool) error
+	UpdateItemNameFunc       func(ctx context.Context, pk, sk, newName string) error
 	DeleteItemFunc           func(ctx context.Context, pk, sk string) error
 }
 
@@ -62,6 +63,13 @@ func (m *MockRepo) UpdateFavoriteStatus(ctx context.Context, pk, sk string, isFa
 func (m *MockRepo) UpdateTrashStatus(ctx context.Context, pk, sk string, isTrashed bool) error {
 	if m.UpdateTrashStatusFunc != nil {
 		return m.UpdateTrashStatusFunc(ctx, pk, sk, isTrashed)
+	}
+	return nil
+}
+
+func (m *MockRepo) UpdateItemName(ctx context.Context, pk, sk, newName string) error {
+	if m.UpdateItemNameFunc != nil {
+		return m.UpdateItemNameFunc(ctx, pk, sk, newName)
 	}
 	return nil
 }

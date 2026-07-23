@@ -21,6 +21,7 @@ type Repository interface {
 	GetItemsByFolderID(ctx context.Context, folderID string) ([]models.DriveItem, error)
 	UpdateFavoriteStatus(ctx context.Context, pk string, sk string, isFavorite bool) error
 	UpdateTrashStatus(ctx context.Context, pk string, sk string, isTrashed bool) error
+	UpdateItemName(ctx context.Context, pk string, sk string, newName string) error
 	DeleteItem(ctx context.Context, pk string, sk string) error
 	CreateUser(ctx context.Context, user *models.User) error
 	GetUserByEmail(ctx context.Context, email string) (*models.User, error)
@@ -197,6 +198,29 @@ func (r *DynamoRepository) UpdateTrashStatus(ctx context.Context, pk string, sk 
 }
 
 // DeleteItem removes a record from DynamoDB by PK and SK
+func (r *DynamoRepository) UpdateItemName(ctx context.Context, pk string, sk string, newName string) error {
+	now := time.Now().Format(time.RFC3339)
+	_, err := r.client.UpdateItem(ctx, &dynamodb.UpdateItemInput{
+		TableName: aws.String(r.tableName),
+		Key: map[string]types.AttributeValue{
+			"PK": &types.AttributeValueMemberS{Value: pk},
+			"SK": &types.AttributeValueMemberS{Value: sk},
+		},
+		UpdateExpression: aws.String("SET #n = :name, UpdatedAt = :updatedAt"),
+		ExpressionAttributeNames: map[string]string{
+			"#n": "Name",
+		},
+		ExpressionAttributeValues: map[string]types.AttributeValue{
+			":name":      &types.AttributeValueMemberS{Value: newName},
+			":updatedAt": &types.AttributeValueMemberS{Value: now},
+		},
+	})
+	if err != nil {
+		return fmt.Errorf("failed to update item name in DynamoDB: %w", err)
+	}
+	return nil
+}
+
 func (r *DynamoRepository) DeleteItem(ctx context.Context, pk string, sk string) error {
 	_, err := r.client.DeleteItem(ctx, &dynamodb.DeleteItemInput{
 		TableName: aws.String(r.tableName),

@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 
+	"cdrive-backend/pkg/auth"
 	"cdrive-backend/pkg/models"
 	"cdrive-backend/pkg/repository"
 	"cdrive-backend/pkg/storage"
@@ -12,14 +13,16 @@ import (
 )
 
 type DownloadHandler struct {
-	repo    repository.Repository
-	storage storage.Storage
+	repo          repository.Repository
+	storage       storage.Storage
+	authenticator auth.Authenticator
 }
 
-func NewDownloadHandler(repo repository.Repository, storage storage.Storage) *DownloadHandler {
+func NewDownloadHandler(repo repository.Repository, storage storage.Storage, authenticator auth.Authenticator) *DownloadHandler {
 	return &DownloadHandler{
-		repo:    repo,
-		storage: storage,
+		repo:          repo,
+		storage:       storage,
+		authenticator: authenticator,
 	}
 }
 
@@ -27,6 +30,17 @@ func NewDownloadHandler(repo repository.Repository, storage storage.Storage) *Do
 func (h *DownloadHandler) HandleDownloadURL(ctx context.Context, request events.APIGatewayV2HTTPRequest) (events.APIGatewayV2HTTPResponse, error) {
 	userID := request.QueryStringParameters["userId"]
 	fileID := request.QueryStringParameters["fileId"]
+
+	if h.authenticator != nil {
+		authenticatedUserID, err := h.authenticator.ExtractUserID(request)
+		if err == nil && authenticatedUserID != "" {
+			userID = authenticatedUserID
+		} else if userID == "" {
+			return jsonResponse(http.StatusUnauthorized, models.ErrorResponse{
+				Error: "Unauthorized access: missing or invalid authentication token",
+			})
+		}
+	}
 
 	if userID == "" || fileID == "" {
 		return jsonResponse(http.StatusBadRequest, models.ErrorResponse{

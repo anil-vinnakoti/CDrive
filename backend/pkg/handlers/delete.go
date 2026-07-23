@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 
+	"cdrive-backend/pkg/auth"
 	"cdrive-backend/pkg/models"
 	"cdrive-backend/pkg/repository"
 	"cdrive-backend/pkg/storage"
@@ -13,14 +14,16 @@ import (
 )
 
 type DeleteHandler struct {
-	repo    repository.Repository
-	storage storage.Storage
+	repo          repository.Repository
+	storage       storage.Storage
+	authenticator auth.Authenticator
 }
 
-func NewDeleteHandler(repo repository.Repository, storage storage.Storage) *DeleteHandler {
+func NewDeleteHandler(repo repository.Repository, storage storage.Storage, authenticator auth.Authenticator) *DeleteHandler {
 	return &DeleteHandler{
-		repo:    repo,
-		storage: storage,
+		repo:          repo,
+		storage:       storage,
+		authenticator: authenticator,
 	}
 }
 
@@ -32,6 +35,16 @@ func (h *DeleteHandler) HandleDelete(ctx context.Context, request events.APIGate
 			Error:   "Invalid request body",
 			Details: err.Error(),
 		})
+	}
+
+	if h.authenticator != nil {
+		authenticatedUserID, err := h.authenticator.ExtractUserID(request)
+		if err != nil {
+			return jsonResponse(http.StatusUnauthorized, models.ErrorResponse{
+				Error: "Unauthorized access: " + err.Error(),
+			})
+		}
+		req.UserID = authenticatedUserID
 	}
 
 	if req.UserID == "" || req.ItemID == "" || req.Type == "" {

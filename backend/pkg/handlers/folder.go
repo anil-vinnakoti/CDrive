@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"time"
 
+	"cdrive-backend/pkg/auth"
 	"cdrive-backend/pkg/models"
 	"cdrive-backend/pkg/repository"
 
@@ -14,12 +15,14 @@ import (
 )
 
 type FolderHandler struct {
-	repo repository.Repository
+	repo          repository.Repository
+	authenticator auth.Authenticator
 }
 
-func NewFolderHandler(repo repository.Repository) *FolderHandler {
+func NewFolderHandler(repo repository.Repository, authenticator auth.Authenticator) *FolderHandler {
 	return &FolderHandler{
-		repo: repo,
+		repo:          repo,
+		authenticator: authenticator,
 	}
 }
 
@@ -31,6 +34,16 @@ func (h *FolderHandler) CreateFolder(ctx context.Context, request events.APIGate
 			Error:   "Invalid request body",
 			Details: err.Error(),
 		})
+	}
+
+	if h.authenticator != nil {
+		authenticatedUserID, err := h.authenticator.ExtractUserID(request)
+		if err != nil {
+			return jsonResponse(http.StatusUnauthorized, models.ErrorResponse{
+				Error: "Unauthorized access: " + err.Error(),
+			})
+		}
+		req.UserID = authenticatedUserID
 	}
 
 	if req.UserID == "" || req.Name == "" {
@@ -73,14 +86,24 @@ func (h *FolderHandler) CreateFolder(ctx context.Context, request events.APIGate
 }
 
 // ListFolderContents handles GET requests to list files and subfolders.
-// If userId is passed without folderId, retrieves all files & folders for that user across the entire drive.
-// If folderId is passed, queries items inside that specific folder using FolderIdIndex GSI.
+// Authenticates user token if provided to extract user ID.
 func (h *FolderHandler) ListFolderContents(ctx context.Context, request events.APIGatewayV2HTTPRequest) (events.APIGatewayV2HTTPResponse, error) {
 	userID := request.QueryStringParameters["userId"]
 	folderID := request.QueryStringParameters["folderId"]
 	if folderID == "" {
 		if val, exists := request.PathParameters["folderId"]; exists {
 			folderID = val
+		}
+	}
+
+	if h.authenticator != nil {
+		authenticatedUserID, err := h.authenticator.ExtractUserID(request)
+		if err == nil && authenticatedUserID != "" {
+			userID = authenticatedUserID
+		} else if userID == "" {
+			return jsonResponse(http.StatusUnauthorized, models.ErrorResponse{
+				Error: "Unauthorized access: missing or invalid authentication token",
+			})
 		}
 	}
 

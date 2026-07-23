@@ -7,6 +7,7 @@ import (
 	"os"
 	"strings"
 
+	"cdrive-backend/pkg/auth"
 	"cdrive-backend/pkg/handlers"
 	"cdrive-backend/pkg/repository"
 	"cdrive-backend/pkg/storage"
@@ -20,6 +21,7 @@ import (
 )
 
 var (
+	authHandler     *handlers.AuthHandler
 	uploadHandler   *handlers.UploadHandler
 	downloadHandler *handlers.DownloadHandler
 	folderHandler   *handlers.FolderHandler
@@ -49,6 +51,11 @@ func init() {
 	gsiName := os.Getenv("GSI_FOLDER_INDEX")
 	if gsiName == "" {
 		gsiName = "FolderIdIndex"
+	}
+
+	jwtSecret := os.Getenv("JWT_SECRET")
+	if jwtSecret == "" {
+		jwtSecret = "cdrive-dev-secret-key-2026"
 	}
 
 	cfg, err := config.LoadDefaultConfig(context.Background())
@@ -89,11 +96,13 @@ func init() {
 
 	repo := repository.NewDynamoRepository(dynamoClient, tableName, gsiName)
 	store := storage.NewS3Storage(s3Client, bucketName)
+	jwtAuth := auth.NewJWTAuth(jwtSecret)
 
-	uploadHandler = handlers.NewUploadHandler(repo, store)
-	downloadHandler = handlers.NewDownloadHandler(repo, store)
-	folderHandler = handlers.NewFolderHandler(repo)
-	deleteHandler = handlers.NewDeleteHandler(repo, store)
+	authHandler = handlers.NewAuthHandler(jwtAuth)
+	uploadHandler = handlers.NewUploadHandler(repo, store, jwtAuth)
+	downloadHandler = handlers.NewDownloadHandler(repo, store, jwtAuth)
+	folderHandler = handlers.NewFolderHandler(repo, jwtAuth)
+	deleteHandler = handlers.NewDeleteHandler(repo, store, jwtAuth)
 }
 
 func router(ctx context.Context, request events.APIGatewayV2HTTPRequest) (events.APIGatewayV2HTTPResponse, error) {
@@ -108,6 +117,9 @@ func router(ctx context.Context, request events.APIGatewayV2HTTPRequest) (events
 	logger.Info("incoming request", "rawPath", rawPath, "normalizedPath", normalizedPath, "method", method)
 
 	switch {
+	case method == "POST" && (normalizedPath == "/auth/token" || normalizedPath == "/auth/login"):
+		return authHandler.HandleTokenGen(ctx, request)
+
 	case method == "POST" && (normalizedPath == "/files/upload-url" || normalizedPath == "/files/upload" || normalizedPath == "/upload"):
 		return uploadHandler.HandleUploadProcess(ctx, request)
 

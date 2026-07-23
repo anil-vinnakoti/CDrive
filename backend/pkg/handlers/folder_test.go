@@ -32,7 +32,7 @@ func TestListFolderContents_Success(t *testing.T) {
 		},
 	}
 
-	handler := NewFolderHandler(mockRepo)
+	handler := NewFolderHandler(mockRepo, nil)
 
 	request := events.APIGatewayV2HTTPRequest{
 		QueryStringParameters: map[string]string{
@@ -80,7 +80,7 @@ func TestListFolderContents_AllUserItems(t *testing.T) {
 		},
 	}
 
-	handler := NewFolderHandler(mockRepo)
+	handler := NewFolderHandler(mockRepo, nil)
 
 	request := events.APIGatewayV2HTTPRequest{
 		QueryStringParameters: map[string]string{
@@ -117,7 +117,7 @@ func TestListFolderContents_DefaultRoot(t *testing.T) {
 		},
 	}
 
-	handler := NewFolderHandler(mockRepo)
+	handler := NewFolderHandler(mockRepo, nil)
 
 	request := events.APIGatewayV2HTTPRequest{}
 
@@ -138,7 +138,7 @@ func TestListFolderContents_RepositoryError(t *testing.T) {
 		},
 	}
 
-	handler := NewFolderHandler(mockRepo)
+	handler := NewFolderHandler(mockRepo, nil)
 
 	request := events.APIGatewayV2HTTPRequest{
 		QueryStringParameters: map[string]string{"folderId": "ROOT"},

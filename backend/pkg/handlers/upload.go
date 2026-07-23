@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"time"
 
+	"cdrive-backend/pkg/auth"
 	"cdrive-backend/pkg/models"
 	"cdrive-backend/pkg/repository"
 	"cdrive-backend/pkg/storage"
@@ -15,14 +16,16 @@ import (
 )
 
 type UploadHandler struct {
-	repo    repository.Repository
-	storage storage.Storage
+	repo          repository.Repository
+	storage       storage.Storage
+	authenticator auth.Authenticator
 }
 
-func NewUploadHandler(repo repository.Repository, storage storage.Storage) *UploadHandler {
+func NewUploadHandler(repo repository.Repository, storage storage.Storage, authenticator auth.Authenticator) *UploadHandler {
 	return &UploadHandler{
-		repo:    repo,
-		storage: storage,
+		repo:          repo,
+		storage:       storage,
+		authenticator: authenticator,
 	}
 }
 
@@ -34,6 +37,17 @@ func (h *UploadHandler) HandleUploadProcess(ctx context.Context, request events.
 			Error:   "Invalid request body",
 			Details: err.Error(),
 		})
+	}
+
+	// Validate JWT authentication
+	if h.authenticator != nil {
+		authenticatedUserID, err := h.authenticator.ExtractUserID(request)
+		if err != nil {
+			return jsonResponse(http.StatusUnauthorized, models.ErrorResponse{
+				Error: "Unauthorized access: " + err.Error(),
+			})
+		}
+		req.UserID = authenticatedUserID
 	}
 
 	if req.UserID == "" || req.FileName == "" {

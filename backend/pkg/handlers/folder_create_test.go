@@ -6,12 +6,16 @@ import (
 	"net/http"
 	"testing"
 
+	"cdrive-backend/pkg/auth"
 	"cdrive-backend/pkg/models"
 
 	"github.com/aws/aws-lambda-go/events"
 )
 
 func TestCreateFolder_Success(t *testing.T) {
+	jwtAuth := auth.NewJWTAuth("test-secret")
+	tokenStr, _ := jwtAuth.GenerateToken("user_123")
+
 	folderSaved := false
 
 	mockRepo := &MockRepo{
@@ -27,10 +31,9 @@ func TestCreateFolder_Success(t *testing.T) {
 		},
 	}
 
-	handler := NewFolderHandler(mockRepo)
+	handler := NewFolderHandler(mockRepo, jwtAuth)
 
 	payload := models.CreateFolderRequest{
-		UserID:   "user_123",
 		Name:     "Documents",
 		FolderID: "ROOT",
 	}
@@ -38,6 +41,9 @@ func TestCreateFolder_Success(t *testing.T) {
 	bodyBytes, _ := json.Marshal(payload)
 	request := events.APIGatewayV2HTTPRequest{
 		Body: string(bodyBytes),
+		Headers: map[string]string{
+			"authorization": "Bearer " + tokenStr,
+		},
 	}
 
 	response, err := handler.CreateFolder(context.Background(), request)
@@ -55,7 +61,7 @@ func TestCreateFolder_Success(t *testing.T) {
 }
 
 func TestCreateFolder_MissingName(t *testing.T) {
-	handler := NewFolderHandler(&MockRepo{})
+	handler := NewFolderHandler(&MockRepo{}, nil)
 
 	payload := models.CreateFolderRequest{
 		UserID: "user_123",

@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"testing"
 
+	"cdrive-backend/pkg/auth"
 	"cdrive-backend/pkg/models"
 
 	"github.com/aws/aws-lambda-go/events"
@@ -85,12 +86,14 @@ func (m *MockStorage) DeleteObject(ctx context.Context, key string) error {
 }
 
 func TestHandleUploadProcess_Success(t *testing.T) {
+	jwtAuth := auth.NewJWTAuth("test-secret")
+	tokenStr, _ := jwtAuth.GenerateToken("user_test_123")
+
 	mockRepo := &MockRepo{}
 	mockStore := &MockStorage{}
-	handler := NewUploadHandler(mockRepo, mockStore)
+	handler := NewUploadHandler(mockRepo, mockStore, jwtAuth)
 
 	payload := models.UploadRequest{
-		UserID:   "user_test_123",
 		FileName: "test_doc.pdf",
 		FolderID: "ROOT",
 		Size:     1024,
@@ -100,6 +103,9 @@ func TestHandleUploadProcess_Success(t *testing.T) {
 	bodyBytes, _ := json.Marshal(payload)
 	request := events.APIGatewayV2HTTPRequest{
 		Body: string(bodyBytes),
+		Headers: map[string]string{
+			"authorization": "Bearer " + tokenStr,
+		},
 	}
 
 	response, err := handler.HandleUploadProcess(context.Background(), request)
@@ -125,10 +131,31 @@ func TestHandleUploadProcess_Success(t *testing.T) {
 	}
 }
 
+func TestHandleUploadProcess_Unauthorized(t *testing.T) {
+	jwtAuth := auth.NewJWTAuth("test-secret")
+	handler := NewUploadHandler(&MockRepo{}, &MockStorage{}, jwtAuth)
+
+	payload := models.UploadRequest{
+		FileName: "file.pdf",
+	}
+
+	bodyBytes, _ := json.Marshal(payload)
+	request := events.APIGatewayV2HTTPRequest{
+		Body: string(bodyBytes), // Missing Authorization header
+	}
+
+	response, err := handler.HandleUploadProcess(context.Background(), request)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if response.StatusCode != http.StatusUnauthorized {
+		t.Errorf("expected status 401, got %d", response.StatusCode)
+	}
+}
+
 func TestHandleUploadProcess_MissingRequiredFields(t *testing.T) {
-	mockRepo := &MockRepo{}
-	mockStore := &MockStorage{}
-	handler := NewUploadHandler(mockRepo, mockStore)
+	handler := NewUploadHandler(&MockRepo{}, &MockStorage{}, nil)
 
 	payload := models.UploadRequest{
 		UserID: "", // Invalid
@@ -150,22 +177,27 @@ func TestHandleUploadProcess_MissingRequiredFields(t *testing.T) {
 }
 
 func TestHandleUploadProcess_S3PresignError(t *testing.T) {
+	jwtAuth := auth.NewJWTAuth("test-secret")
+	tokenStr, _ := jwtAuth.GenerateToken("user_123")
+
 	mockRepo := &MockRepo{}
 	mockStore := &MockStorage{
 		GeneratePresignedPutURLFunc: func(ctx context.Context, key string, contentType string) (string, error) {
 			return "", errors.New("S3 presign error")
 		},
 	}
-	handler := NewUploadHandler(mockRepo, mockStore)
+	handler := NewUploadHandler(mockRepo, mockStore, jwtAuth)
 
 	payload := models.UploadRequest{
-		UserID:   "user_123",
 		FileName: "file.txt",
 	}
 
 	bodyBytes, _ := json.Marshal(payload)
 	request := events.APIGatewayV2HTTPRequest{
 		Body: string(bodyBytes),
+		Headers: map[string]string{
+			"authorization": "Bearer " + tokenStr,
+		},
 	}
 
 	response, err := handler.HandleUploadProcess(context.Background(), request)

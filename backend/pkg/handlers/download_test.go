@@ -6,12 +6,16 @@ import (
 	"net/http"
 	"testing"
 
+	"cdrive-backend/pkg/auth"
 	"cdrive-backend/pkg/models"
 
 	"github.com/aws/aws-lambda-go/events"
 )
 
 func TestHandleDownloadURL_Success(t *testing.T) {
+	jwtAuth := auth.NewJWTAuth("test-secret")
+	tokenStr, _ := jwtAuth.GenerateToken("user_123")
+
 	mockRepo := &MockRepo{
 		GetItemFunc: func(ctx context.Context, pk, sk string) (*models.DriveItem, error) {
 			return &models.DriveItem{
@@ -30,12 +34,14 @@ func TestHandleDownloadURL_Success(t *testing.T) {
 		},
 	}
 
-	handler := NewDownloadHandler(mockRepo, mockStore)
+	handler := NewDownloadHandler(mockRepo, mockStore, jwtAuth)
 
 	request := events.APIGatewayV2HTTPRequest{
 		QueryStringParameters: map[string]string{
-			"userId": "user_123",
 			"fileId": "file_123",
+		},
+		Headers: map[string]string{
+			"authorization": "Bearer " + tokenStr,
 		},
 	}
 
@@ -59,7 +65,7 @@ func TestHandleDownloadURL_Success(t *testing.T) {
 }
 
 func TestHandleDownloadURL_MissingQueryParams(t *testing.T) {
-	handler := NewDownloadHandler(&MockRepo{}, &MockStorage{})
+	handler := NewDownloadHandler(&MockRepo{}, &MockStorage{}, nil)
 
 	request := events.APIGatewayV2HTTPRequest{}
 
@@ -74,18 +80,23 @@ func TestHandleDownloadURL_MissingQueryParams(t *testing.T) {
 }
 
 func TestHandleDownloadURL_FileNotFound(t *testing.T) {
+	jwtAuth := auth.NewJWTAuth("test-secret")
+	tokenStr, _ := jwtAuth.GenerateToken("user_123")
+
 	mockRepo := &MockRepo{
 		GetItemFunc: func(ctx context.Context, pk, sk string) (*models.DriveItem, error) {
 			return nil, nil // Not found
 		},
 	}
 
-	handler := NewDownloadHandler(mockRepo, &MockStorage{})
+	handler := NewDownloadHandler(mockRepo, &MockStorage{}, jwtAuth)
 
 	request := events.APIGatewayV2HTTPRequest{
 		QueryStringParameters: map[string]string{
-			"userId": "user_123",
 			"fileId": "non_existent",
+		},
+		Headers: map[string]string{
+			"authorization": "Bearer " + tokenStr,
 		},
 	}
 

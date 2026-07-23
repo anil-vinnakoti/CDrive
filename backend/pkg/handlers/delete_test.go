@@ -6,12 +6,16 @@ import (
 	"net/http"
 	"testing"
 
+	"cdrive-backend/pkg/auth"
 	"cdrive-backend/pkg/models"
 
 	"github.com/aws/aws-lambda-go/events"
 )
 
 func TestHandleDelete_FileSuccess(t *testing.T) {
+	jwtAuth := auth.NewJWTAuth("test-secret")
+	tokenStr, _ := jwtAuth.GenerateToken("user_123")
+
 	s3Deleted := false
 	dynamoDeleted := false
 
@@ -37,10 +41,9 @@ func TestHandleDelete_FileSuccess(t *testing.T) {
 		},
 	}
 
-	handler := NewDeleteHandler(mockRepo, mockStorage)
+	handler := NewDeleteHandler(mockRepo, mockStorage, jwtAuth)
 
 	payload := models.DeleteItemRequest{
-		UserID: "user_123",
 		ItemID: "file_123",
 		Type:   "FILE",
 	}
@@ -48,6 +51,9 @@ func TestHandleDelete_FileSuccess(t *testing.T) {
 	bodyBytes, _ := json.Marshal(payload)
 	request := events.APIGatewayV2HTTPRequest{
 		Body: string(bodyBytes),
+		Headers: map[string]string{
+			"authorization": "Bearer " + tokenStr,
+		},
 	}
 
 	response, err := handler.HandleDelete(context.Background(), request)
@@ -69,6 +75,9 @@ func TestHandleDelete_FileSuccess(t *testing.T) {
 }
 
 func TestHandleDelete_FolderSuccess(t *testing.T) {
+	jwtAuth := auth.NewJWTAuth("test-secret")
+	tokenStr, _ := jwtAuth.GenerateToken("user_123")
+
 	dynamoDeleted := false
 
 	mockRepo := &MockRepo{
@@ -78,10 +87,9 @@ func TestHandleDelete_FolderSuccess(t *testing.T) {
 		},
 	}
 
-	handler := NewDeleteHandler(mockRepo, &MockStorage{})
+	handler := NewDeleteHandler(mockRepo, &MockStorage{}, jwtAuth)
 
 	payload := models.DeleteItemRequest{
-		UserID: "user_123",
 		ItemID: "folder_456",
 		Type:   "FOLDER",
 	}
@@ -89,6 +97,9 @@ func TestHandleDelete_FolderSuccess(t *testing.T) {
 	bodyBytes, _ := json.Marshal(payload)
 	request := events.APIGatewayV2HTTPRequest{
 		Body: string(bodyBytes),
+		Headers: map[string]string{
+			"authorization": "Bearer " + tokenStr,
+		},
 	}
 
 	response, err := handler.HandleDelete(context.Background(), request)
@@ -106,7 +117,7 @@ func TestHandleDelete_FolderSuccess(t *testing.T) {
 }
 
 func TestHandleDelete_MissingRequiredFields(t *testing.T) {
-	handler := NewDeleteHandler(&MockRepo{}, &MockStorage{})
+	handler := NewDeleteHandler(&MockRepo{}, &MockStorage{}, nil)
 
 	payload := models.DeleteItemRequest{
 		UserID: "",

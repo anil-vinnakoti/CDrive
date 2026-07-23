@@ -4,18 +4,18 @@ import "time"
 
 // DriveItem represents a file or folder record stored in DynamoDB
 type DriveItem struct {
-	PK          string    `dynamodbav:"PK" json:"pk"`
-	SK          string    `dynamodbav:"SK" json:"sk"`
-	ID          string    `dynamodbav:"ID" json:"id"`
-	UserID      string    `dynamodbav:"UserID" json:"userId"`
-	FolderID    string    `dynamodbav:"FolderID,omitempty" json:"folderId,omitempty"`
-	Type        string    `dynamodbav:"Type" json:"type"` // "FILE" or "FOLDER"
-	Name        string    `dynamodbav:"Name" json:"name"`
-	Size        int64     `dynamodbav:"Size,omitempty" json:"size,omitempty"`
-	MimeType    string    `dynamodbav:"MimeType,omitempty" json:"mimeType,omitempty"`
-	S3Key       string    `dynamodbav:"S3Key,omitempty" json:"s3Key,omitempty"`
-	CreatedAt   time.Time `dynamodbav:"CreatedAt" json:"createdAt"`
-	UpdatedAt   time.Time `dynamodbav:"UpdatedAt" json:"updatedAt"`
+	PK        string    `dynamodbav:"PK" json:"pk"`
+	SK        string    `dynamodbav:"SK" json:"sk"`
+	ID        string    `dynamodbav:"ID" json:"id"`
+	UserID    string    `dynamodbav:"UserID" json:"userId"`
+	FolderID  string    `dynamodbav:"FolderID,omitempty" json:"folderId,omitempty"`
+	Type      string    `dynamodbav:"Type" json:"type"` // "FILE" or "FOLDER"
+	Name      string    `dynamodbav:"Name" json:"name"`
+	Size      int64     `dynamodbav:"Size,omitempty" json:"size,omitempty"`
+	MimeType  string    `dynamodbav:"MimeType,omitempty" json:"mimeType,omitempty"`
+	S3Key     string    `dynamodbav:"S3Key,omitempty" json:"s3Key,omitempty"`
+	CreatedAt time.Time `dynamodbav:"CreatedAt" json:"createdAt"`
+	UpdatedAt time.Time `dynamodbav:"UpdatedAt" json:"updatedAt"`
 }
 
 // UploadRequest represents the payload to request a presigned upload URL
@@ -34,6 +34,12 @@ type UploadResponse struct {
 	Item      *DriveItem `json:"item"`
 }
 
+// DownloadURLResponse represents the response containing the S3 presigned download URL
+type DownloadURLResponse struct {
+	DownloadURL string `json:"downloadUrl"`
+	ExpiresIn   int    `json:"expiresInSeconds"`
+}
+
 // CreateFolderRequest represents the payload to create a new folder
 type CreateFolderRequest struct {
 	UserID   string `json:"userId"`
@@ -41,9 +47,32 @@ type CreateFolderRequest struct {
 	FolderID string `json:"folderId"` // Parent folder ID, optional
 }
 
+// DeleteItemRequest represents the payload to delete a file or folder
+type DeleteItemRequest struct {
+	UserID string `json:"userId"`
+	ItemID string `json:"itemId"`
+	Type   string `json:"type"` // "FILE" or "FOLDER"
+}
+
+// DeleteItemResponse represents the response when an item is deleted
+type DeleteItemResponse struct {
+	Message string `json:"message"`
+	ItemID  string `json:"itemId"`
+}
+
 // ListFolderResponse represents the payload returned when querying folder contents
 type ListFolderResponse struct {
 	FolderID string      `json:"folderId"`
+	Items    []DriveItem `json:"items"`
+}
+
+// ListUserDriveResponse represents the structured response containing files, folders, and combined items
+type ListUserDriveResponse struct {
+	UserID   string      `json:"userId"`
+	FolderID string      `json:"folderId,omitempty"`
+	Count    int         `json:"count"`
+	Files    []DriveItem `json:"files"`
+	Folders  []DriveItem `json:"folders"`
 	Items    []DriveItem `json:"items"`
 }
 

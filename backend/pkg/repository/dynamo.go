@@ -15,7 +15,10 @@ import (
 // Repository defines data access methods for single-table operations
 type Repository interface {
 	PutItem(ctx context.Context, item models.DriveItem) error
+	GetItem(ctx context.Context, pk string, sk string) (*models.DriveItem, error)
+	GetItemsByUserID(ctx context.Context, userID string) ([]models.DriveItem, error)
 	GetItemsByFolderID(ctx context.Context, folderID string) ([]models.DriveItem, error)
+	DeleteItem(ctx context.Context, pk string, sk string) error
 }
 
 type DynamoRepository struct {
@@ -50,6 +53,63 @@ func (r *DynamoRepository) PutItem(ctx context.Context, item models.DriveItem) e
 	return nil
 }
 
+// GetItem retrieves a single DriveItem by PK and SK
+func (r *DynamoRepository) GetItem(ctx context.Context, pk string, sk string) (*models.DriveItem, error) {
+	result, err := r.client.GetItem(ctx, &dynamodb.GetItemInput{
+		TableName: aws.String(r.tableName),
+		Key: map[string]types.AttributeValue{
+			"PK": &types.AttributeValueMemberS{Value: pk},
+			"SK": &types.AttributeValueMemberS{Value: sk},
+		},
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to get item from DynamoDB: %w", err)
+	}
+
+	if result.Item == nil {
+		return nil, nil
+	}
+
+	var item models.DriveItem
+	if err := attributevalue.UnmarshalMap(result.Item, &item); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal item: %w", err)
+	}
+
+	return &item, nil
+}
+
+// GetItemsByUserID queries all files and folders owned by a specific user (PK = USER#<UserID>)
+func (r *DynamoRepository) GetItemsByUserID(ctx context.Context, userID string) ([]models.DriveItem, error) {
+	pk := "USER#" + userID
+	input := &dynamodb.QueryInput{
+		TableName:              aws.String(r.tableName),
+		KeyConditionExpression: aws.String("PK = :pk"),
+		ExpressionAttributeValues: map[string]types.AttributeValue{
+			":pk": &types.AttributeValueMemberS{Value: pk},
+		},
+	}
+
+	result, err := r.client.Query(ctx, input)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query DynamoDB by UserID: %w", err)
+	}
+
+	var allItems []models.DriveItem
+	err = attributevalue.UnmarshalListOfMaps(result.Items, &allItems)
+	if err != nil {
+		return nil, fmt.Errorf("failed to unmarshal query items: %w", err)
+	}
+
+	var driveItems []models.DriveItem
+	for _, item := range allItems {
+		if item.Type == "FILE" || item.Type == "FOLDER" {
+			driveItems = append(driveItems, item)
+		}
+	}
+
+	return driveItems, nil
+}
+
 // GetItemsByFolderID queries items matching a specific FolderID using the FolderIdIndex GSI
 func (r *DynamoRepository) GetItemsByFolderID(ctx context.Context, folderID string) ([]models.DriveItem, error) {
 	input := &dynamodb.QueryInput{
@@ -73,4 +133,19 @@ func (r *DynamoRepository) GetItemsByFolderID(ctx context.Context, folderID stri
 	}
 
 	return items, nil
+}
+
+// DeleteItem removes a record from DynamoDB by PK and SK
+func (r *DynamoRepository) DeleteItem(ctx context.Context, pk string, sk string) error {
+	_, err := r.client.DeleteItem(ctx, &dynamodb.DeleteItemInput{
+		TableName: aws.String(r.tableName),
+		Key: map[string]types.AttributeValue{
+			"PK": &types.AttributeValueMemberS{Value: pk},
+			"SK": &types.AttributeValueMemberS{Value: sk},
+		},
+	})
+	if err != nil {
+		return fmt.Errorf("failed to delete item from DynamoDB: %w", err)
+	}
+	return nil
 }

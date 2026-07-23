@@ -15,7 +15,10 @@ import (
 // MockRepo mocks the DynamoDB repository interface
 type MockRepo struct {
 	PutItemFunc            func(ctx context.Context, item models.DriveItem) error
+	GetItemFunc            func(ctx context.Context, pk, sk string) (*models.DriveItem, error)
+	GetItemsByUserIDFunc   func(ctx context.Context, userID string) ([]models.DriveItem, error)
 	GetItemsByFolderIDFunc func(ctx context.Context, folderID string) ([]models.DriveItem, error)
+	DeleteItemFunc         func(ctx context.Context, pk, sk string) error
 }
 
 func (m *MockRepo) PutItem(ctx context.Context, item models.DriveItem) error {
@@ -25,6 +28,20 @@ func (m *MockRepo) PutItem(ctx context.Context, item models.DriveItem) error {
 	return nil
 }
 
+func (m *MockRepo) GetItem(ctx context.Context, pk, sk string) (*models.DriveItem, error) {
+	if m.GetItemFunc != nil {
+		return m.GetItemFunc(ctx, pk, sk)
+	}
+	return nil, nil
+}
+
+func (m *MockRepo) GetItemsByUserID(ctx context.Context, userID string) ([]models.DriveItem, error) {
+	if m.GetItemsByUserIDFunc != nil {
+		return m.GetItemsByUserIDFunc(ctx, userID)
+	}
+	return []models.DriveItem{}, nil
+}
+
 func (m *MockRepo) GetItemsByFolderID(ctx context.Context, folderID string) ([]models.DriveItem, error) {
 	if m.GetItemsByFolderIDFunc != nil {
 		return m.GetItemsByFolderIDFunc(ctx, folderID)
@@ -32,9 +49,18 @@ func (m *MockRepo) GetItemsByFolderID(ctx context.Context, folderID string) ([]m
 	return []models.DriveItem{}, nil
 }
 
+func (m *MockRepo) DeleteItem(ctx context.Context, pk, sk string) error {
+	if m.DeleteItemFunc != nil {
+		return m.DeleteItemFunc(ctx, pk, sk)
+	}
+	return nil
+}
+
 // MockStorage mocks the S3 storage interface
 type MockStorage struct {
 	GeneratePresignedPutURLFunc func(ctx context.Context, key string, contentType string) (string, error)
+	GeneratePresignedGetURLFunc func(ctx context.Context, key string) (string, error)
+	DeleteObjectFunc            func(ctx context.Context, key string) error
 }
 
 func (m *MockStorage) GeneratePresignedPutURL(ctx context.Context, key string, contentType string) (string, error) {
@@ -42,6 +68,20 @@ func (m *MockStorage) GeneratePresignedPutURL(ctx context.Context, key string, c
 		return m.GeneratePresignedPutURLFunc(ctx, key, contentType)
 	}
 	return "https://mock-s3-bucket.s3.amazonaws.com/test-key", nil
+}
+
+func (m *MockStorage) GeneratePresignedGetURL(ctx context.Context, key string) (string, error) {
+	if m.GeneratePresignedGetURLFunc != nil {
+		return m.GeneratePresignedGetURLFunc(ctx, key)
+	}
+	return "https://mock-s3-bucket.s3.amazonaws.com/test-key?get=true", nil
+}
+
+func (m *MockStorage) DeleteObject(ctx context.Context, key string) error {
+	if m.DeleteObjectFunc != nil {
+		return m.DeleteObjectFunc(ctx, key)
+	}
+	return nil
 }
 
 func TestHandleUploadProcess_Success(t *testing.T) {

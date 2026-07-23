@@ -20,9 +20,11 @@ import (
 )
 
 var (
-	uploadHandler *handlers.UploadHandler
-	folderHandler *handlers.FolderHandler
-	logger        *slog.Logger
+	uploadHandler   *handlers.UploadHandler
+	downloadHandler *handlers.DownloadHandler
+	folderHandler   *handlers.FolderHandler
+	deleteHandler   *handlers.DeleteHandler
+	logger          *slog.Logger
 )
 
 func init() {
@@ -89,7 +91,9 @@ func init() {
 	store := storage.NewS3Storage(s3Client, bucketName)
 
 	uploadHandler = handlers.NewUploadHandler(repo, store)
+	downloadHandler = handlers.NewDownloadHandler(repo, store)
 	folderHandler = handlers.NewFolderHandler(repo)
+	deleteHandler = handlers.NewDeleteHandler(repo, store)
 }
 
 func router(ctx context.Context, request events.APIGatewayV2HTTPRequest) (events.APIGatewayV2HTTPResponse, error) {
@@ -107,8 +111,17 @@ func router(ctx context.Context, request events.APIGatewayV2HTTPRequest) (events
 	case method == "POST" && (normalizedPath == "/files/upload-url" || normalizedPath == "/files/upload" || normalizedPath == "/upload"):
 		return uploadHandler.HandleUploadProcess(ctx, request)
 
+	case method == "GET" && (normalizedPath == "/files/download-url" || normalizedPath == "/files/download" || normalizedPath == "/download"):
+		return downloadHandler.HandleDownloadURL(ctx, request)
+
+	case method == "POST" && (normalizedPath == "/folders" || normalizedPath == "/folders/create"):
+		return folderHandler.CreateFolder(ctx, request)
+
 	case method == "GET" && (normalizedPath == "/folders/contents" || normalizedPath == "/folders" || normalizedPath == "/files"):
 		return folderHandler.ListFolderContents(ctx, request)
+
+	case (method == "DELETE" || method == "POST") && (normalizedPath == "/delete" || normalizedPath == "/items/delete" || normalizedPath == "/files/delete" || normalizedPath == "/folders/delete"):
+		return deleteHandler.HandleDelete(ctx, request)
 
 	case method == "GET" && normalizedPath == "/health":
 		return events.APIGatewayV2HTTPResponse{

@@ -370,8 +370,8 @@ All primary build and run workflows are defined in [backend/Makefile](backend/Ma
 | `make start-prod-local` | Launches local SAM API Gateway using `env.prod.json` |
 | `make build` | Compiles ARM64 Linux `bootstrap` Go binary to `bin/bootstrap` |
 | `make build-CDriveApiFunction` | SAM builder target compiling `bootstrap` to SAM artifacts folder |
-| `make deploy-dev` | Builds and deploys the CloudFormation stack for `dev` stage to AWS |
-| `make deploy-prod` | Builds and deploys the CloudFormation stack for `prod` stage to AWS |
+| `make deploy-dev` | Manual developer build & deploy for `dev` stage to AWS |
+| `make deploy-prod` | Builds and deploys the CloudFormation stack for `prod` stage to AWS (Also automated via CI/CD) |
 | `make test` | Runs all Go unit tests (`go test -v ./...`) |
 | `make clean` | Cleans build binaries (`bin/`) and SAM cached artifacts (`.aws-sam/`) |
 

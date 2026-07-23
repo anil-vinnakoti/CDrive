@@ -166,17 +166,21 @@ func (r *DynamoRepository) UpdateTrashStatus(ctx context.Context, pk string, sk 
 	var updateExpression string
 	var exprValues map[string]types.AttributeValue
 
+	exprNames := map[string]string{
+		"#ttl": "TTL",
+	}
+
 	if isTrashed {
 		now := time.Now()
 		ttlSeconds := now.Add(25 * 24 * time.Hour).Unix()
-		updateExpression = "SET IsTrashed = :trashed, TrashedAt = :trashedAt, TTL = :ttl"
+		updateExpression = "SET IsTrashed = :trashed, TrashedAt = :trashedAt, #ttl = :ttl"
 		exprValues = map[string]types.AttributeValue{
 			":trashed":   &types.AttributeValueMemberBOOL{Value: true},
 			":trashedAt": &types.AttributeValueMemberS{Value: now.Format(time.RFC3339)},
 			":ttl":       &types.AttributeValueMemberN{Value: fmt.Sprintf("%d", ttlSeconds)},
 		}
 	} else {
-		updateExpression = "SET IsTrashed = :trashed REMOVE TrashedAt, TTL"
+		updateExpression = "SET IsTrashed = :trashed REMOVE TrashedAt, #ttl"
 		exprValues = map[string]types.AttributeValue{
 			":trashed": &types.AttributeValueMemberBOOL{Value: false},
 		}
@@ -189,6 +193,7 @@ func (r *DynamoRepository) UpdateTrashStatus(ctx context.Context, pk string, sk 
 			"SK": &types.AttributeValueMemberS{Value: sk},
 		},
 		UpdateExpression:          aws.String(updateExpression),
+		ExpressionAttributeNames:  exprNames,
 		ExpressionAttributeValues: exprValues,
 	})
 	if err != nil {

@@ -3,6 +3,7 @@ package handlers
 import (
 	"context"
 	"encoding/json"
+	"log/slog"
 	"net/http"
 
 	"cdrive-backend/pkg/auth"
@@ -59,6 +60,7 @@ func (h *TrashHandler) HandleTrash(ctx context.Context, request events.APIGatewa
 
 	err := h.repo.UpdateTrashStatus(ctx, pk, sk, req.IsTrashed)
 	if err != nil {
+		slog.Error("UpdateTrashStatus failed", "pk", pk, "sk", sk, "isTrashed", req.IsTrashed, "error", err)
 		return jsonResponse(http.StatusInternalServerError, models.ErrorResponse{
 			Error:   "Failed to update trash status",
 			Details: err.Error(),

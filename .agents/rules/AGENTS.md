@@ -23,22 +23,20 @@ This document outlines the architectural constraints, database guidelines, SAM d
 
 ---
 
-## 2. Multi-Environment Architecture (`dev` vs `prod`)
+## 2. Environment Architecture (`dev` Focused)
 
-The application supports strict environment isolation for **Development (`dev`)** and **Production (`prod`)**:
+The repository is currently configured with primary focus on the **Development (`dev`)** environment:
 
 ### Environment Matrix
 
-| Environment | Description | Database Table | S3 Bucket Name | SAM Command |
+| Environment | Description | Database Table | S3 Bucket Name | Deployment Command |
 | :--- | :--- | :--- | :--- | :--- |
-| **`dev` (Local)** | Local testing with Docker DynamoDB | `CustomDriveData` (Local port 8000) | Mock / Presigned S3 | `make start-dev` |
-| **`dev` (Cloud)** | AWS Cloud isolated staging stack | `CustomDriveData-dev` | `cdrive-file-storage-dev-<AccId>` | `make deploy-dev` |
-| **`prod` (Cloud)** | Live AWS production stack | `CustomDriveData-prod` | `cdrive-file-storage-prod-<AccId>` | `make deploy-prod` |
+| **`dev` (Cloud)** | AWS Cloud isolated dev stack | `CustomDriveData-dev` | `cdrive-file-storage-dev-<AccId>` | `make deploy-dev` |
 
 ### Environment Rule Constraints
-- Never mix production and development data or credentials.
-- Local development utilizes `env.dev.json` pointing to Docker DynamoDB (`http://host.docker.internal:8000`).
-- Production deployments must use `env.prod.json` / SAM parameter `--parameter-overrides Stage=prod`.
+- Primary target environment for all development, testing, and CI pipelines is `dev` (`Stage=dev`).
+- Infrastructure configuration uses `backend/env.dev.json` pointing to `CustomDriveData-dev` table and `cdrive-file-storage-dev` bucket.
+
 
 ---
 

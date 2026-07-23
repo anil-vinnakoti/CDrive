@@ -1,0 +1,15 @@
+# Go build output
+bootstrap
+bin/
+
+# SAM build artifacts
+.aws-sam/
+build.toml
+samconfig.toml
+
+# Environment variable files (contain secrets)
+env.dev.json
+env.prod.json
+
+# macOS
+.DS_Store

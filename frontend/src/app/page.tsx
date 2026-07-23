@@ -148,10 +148,21 @@ export default function DrivePage() {
     checkAuthAndLoad();
   }, [router, loadItems]);
 
+  // Load saved theme on mount
+  useEffect(() => {
+    const saved = typeof window !== 'undefined' ? localStorage.getItem('cdrive_theme') : null;
+    const initial = (saved === 'light' || saved === 'dark') ? saved : 'dark';
+    setTheme(initial);
+    document.documentElement.setAttribute('data-theme', initial);
+  }, []);
+
   // Handle Theme Toggle
   const toggleTheme = () => {
     const next = theme === 'dark' ? 'light' : 'dark';
     setTheme(next);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('cdrive_theme', next);
+    }
     document.documentElement.setAttribute('data-theme', next);
   };
 

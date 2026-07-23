@@ -33,13 +33,12 @@ func (h *DownloadHandler) HandleDownloadURL(ctx context.Context, request events.
 
 	if h.authenticator != nil {
 		authenticatedUserID, err := h.authenticator.ExtractUserID(request)
-		if err == nil && authenticatedUserID != "" {
-			userID = authenticatedUserID
-		} else if userID == "" {
+		if err != nil || authenticatedUserID == "" {
 			return jsonResponse(http.StatusUnauthorized, models.ErrorResponse{
-				Error: "Unauthorized access: missing or invalid authentication token",
+				Error: "Unauthorized access: valid authentication token is required",
 			})
 		}
+		userID = authenticatedUserID
 	}
 
 	if userID == "" || fileID == "" {
